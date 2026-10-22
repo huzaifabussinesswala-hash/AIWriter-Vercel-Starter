@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 import secrets
@@ -32,10 +31,19 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-# Load .env from this project folder, even when launched from another directory.
 load_dotenv(dotenv_path=BASE_DIR / ".env", override=False)
-# Vercel par writable temporary folder use karo
-if os.getenv("VERCEL"):
+
+# Vercel/serverless ka app folder read-only ho sakta hai.
+IS_SERVERLESS = any(
+    os.getenv(name, "").strip().lower() in ("1", "true", "yes")
+    for name in (
+        "VERCEL",
+        "AWS_LAMBDA_FUNCTION_NAME",
+        "FUNCTIONS_WORKER_RUNTIME",
+    )
+) or str(BASE_DIR).startswith("/var/task")
+
+if IS_SERVERLESS:
     INSTANCE_DIR = Path("/tmp/aiwriter_instance")
 else:
     INSTANCE_DIR = BASE_DIR / "instance"
@@ -52,7 +60,6 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
 
-# Enable secure cookies when HTTPS deployment is configured.
 app.config["SESSION_COOKIE_SECURE"] = (
     os.getenv("COOKIE_SECURE", "0").strip().lower()
     in ("1", "true", "yes")
@@ -62,7 +69,7 @@ csrf = CSRFProtect(app)
 
 
 def get_positive_int_env(name, default, minimum=1):
-    """Read an integer environment variable safely."""
+    """Environment variable se valid positive integer hasil karo."""
     try:
         value = int(os.getenv(name, str(default)))
         return value if value >= minimum else default
@@ -70,9 +77,8 @@ def get_positive_int_env(name, default, minimum=1):
         return default
 
 
-
-# Database path: Vercel par writable temporary storage
-if os.getenv("VERCEL"):
+# Vercel par /tmp writable hai, lekin permanent database nahi hai.
+if IS_SERVERLESS:
     DATABASE_PATH = Path("/tmp/aiwriter_pro.db")
 else:
     DATABASE_PATH = Path(
@@ -102,31 +108,44 @@ OLLAMA_TIMEOUT = get_positive_int_env("OLLAMA_TIMEOUT", 120)
 
 MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com").strip()
 MAIL_PORT = get_positive_int_env("MAIL_PORT", 587)
-MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").strip().lower() in ("1", "true", "yes")
+MAIL_USE_TLS = (
+    os.getenv("MAIL_USE_TLS", "true").strip().lower()
+    in ("1", "true", "yes")
+)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "").strip()
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "").replace(" ", "").strip()
-MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", MAIL_USERNAME).strip()
+MAIL_DEFAULT_SENDER = os.getenv(
+    "MAIL_DEFAULT_SENDER",
+    MAIL_USERNAME,
+).strip()
+
 OTP_EXPIRY_MINUTES = 10
 OTP_RESEND_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
 
 
 def send_verification_email(recipient, otp):
-    """Send a short-lived email verification code through configured SMTP."""
+    """SMTP ke zariye email verification code bhejo."""
     if not MAIL_USERNAME or not MAIL_PASSWORD or not MAIL_DEFAULT_SENDER:
-        raise RuntimeError("Email SMTP is not configured. Set MAIL_USERNAME, MAIL_PASSWORD and MAIL_DEFAULT_SENDER in .env.")
+        raise RuntimeError(
+            "Email SMTP is not configured. Set MAIL_USERNAME, "
+            "MAIL_PASSWORD and MAIL_DEFAULT_SENDER in .env."
+        )
 
     message = EmailMessage()
     message["Subject"] = "Verify your email address | AIWriter Pro"
     message["From"] = MAIL_DEFAULT_SENDER
     message["To"] = recipient
+
     message.set_content(
         "Hello,\n\n"
         "Thank you for creating an AIWriter Pro account.\n\n"
         f"Your email verification code is: {otp}\n\n"
-        f"For your security, this code will expire in {OTP_EXPIRY_MINUTES} minutes. "
+        f"For your security, this code will expire in "
+        f"{OTP_EXPIRY_MINUTES} minutes. "
         "Please do not share this code with anyone.\n\n"
-        "If you did not request this verification, you can safely ignore this email.\n\n"
+        "If you did not request this verification, you can safely ignore "
+        "this email.\n\n"
         "Best regards,\n"
         "The AIWriter Pro Team"
     )
@@ -143,8 +162,14 @@ def make_otp():
 
 
 def otp_hash(code, email):
-    # Bind the hash to the address so a code cannot be reused for another account.
-    return hashlib.sha256((email.lower() + ":" + code + ":" + app.config["SECRET_KEY"]).encode("utf-8")).hexdigest()
+    value = (
+        email.lower()
+        + ":"
+        + code
+        + ":"
+        + app.config["SECRET_KEY"]
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 # =========================================================
@@ -214,12 +239,7 @@ LENGTHS = [
 
 @contextmanager
 def get_db():
-    """
-    Open a database connection and always close it.
-
-    SQLite's built-in connection context manager handles commits
-    and rollbacks, but does not itself close the connection.
-    """
+    """Database connection ko use karke hamesha close karo."""
     connection = sqlite3.connect(
         str(DATABASE_PATH),
         timeout=15,
@@ -238,7 +258,7 @@ def get_db():
 
 
 def init_db():
-    """Create tables and safely migrate older database versions."""
+    """Database tables banao aur purane schema ko migrate karo."""
     with get_db() as db:
         db.executescript("""
             CREATE TABLE IF NOT EXISTS users (
@@ -287,7 +307,6 @@ def init_db():
                 "ADD COLUMN plan TEXT NOT NULL DEFAULT 'free'"
             )
 
-        # Existing accounts stay usable; newly registered accounts must verify email.
         migrations = {
             "email_verified": "INTEGER NOT NULL DEFAULT 1",
             "verification_code_hash": "TEXT",
@@ -295,14 +314,15 @@ def init_db():
             "verification_attempts": "INTEGER NOT NULL DEFAULT 0",
             "verification_last_sent_at": "TEXT",
         }
+
         for column, definition in migrations.items():
             if column not in columns:
-                db.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
+                db.execute(
+                    f"ALTER TABLE users ADD COLUMN {column} {definition}"
+                )
 
 
 init_db()
-
-
 # =========================================================
 # 4. USER AND AUTHENTICATION HELPERS
 # =========================================================
@@ -329,7 +349,6 @@ def get_current_user():
 
     user = dict(row)
 
-    # Protect against an unexpected plan value in an older database.
     if user["plan"] not in PLANS:
         user["plan"] = "free"
 
@@ -386,22 +405,13 @@ def get_usage(user):
     daily_limit = plan["daily_limit"]
     monthly_limit = plan["monthly_limit"]
 
-    # Free plan uses its daily quota for the progress display.
-    # Other plans use their monthly quota.
     if daily_limit:
         remaining = max(0, daily_limit - daily_used)
-        percent = min(
-            100,
-            int(daily_used * 100 / daily_limit),
-        )
+        percent = min(100, int(daily_used * 100 / daily_limit))
     else:
         remaining = max(0, monthly_limit - monthly_used)
-        percent = min(
-            100,
-            int(monthly_used * 100 / monthly_limit),
-        )
+        percent = min(100, int(monthly_used * 100 / monthly_limit))
 
-    # Keep both detailed quota fields and the simpler names used by templates.
     if daily_limit:
         display_used = daily_used
         display_limit = daily_limit
@@ -433,16 +443,10 @@ def can_generate(user, usage):
         plan["daily_limit"]
         and usage["daily_used"] >= plan["daily_limit"]
     ):
-        return (
-            False,
-            "Your daily Free-plan limit has been reached.",
-        )
+        return False, "Your daily Free-plan limit has been reached."
 
     if usage["monthly_used"] >= plan["monthly_limit"]:
-        return (
-            False,
-            "Your monthly generation limit has been reached.",
-        )
+        return False, "Your monthly generation limit has been reached."
 
     return True, ""
 
@@ -492,7 +496,6 @@ User request:
     )
 
     response.raise_for_status()
-
     data = response.json()
 
     if not isinstance(data, dict):
@@ -501,9 +504,7 @@ User request:
     generated_text = (data.get("response") or "").strip()
 
     if not generated_text:
-        raise RuntimeError(
-            "The AI model returned an empty response."
-        )
+        raise RuntimeError("The AI model returned an empty response.")
 
     return generated_text
 
@@ -585,62 +586,116 @@ def signup():
         if len(name) < 2:
             flash("Please enter a name with at least 2 characters.", "error")
             return render_template("signup.html")
+
         if password != confirm_password:
             flash("Passwords do not match.", "error")
             return render_template("signup.html")
-        if not email or "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+
+        if (
+            not email
+            or "@" not in email
+            or "." not in email.rsplit("@", 1)[-1]
+        ):
             flash("Please enter a valid email address.", "error")
             return render_template("signup.html")
+
         if len(password) < 8:
             flash("Password must be at least 8 characters long.", "error")
             return render_template("signup.html")
+
         if len(name) > 100 or len(email) > 254:
             flash("Please shorten your name or email address.", "error")
             return render_template("signup.html")
 
         code = make_otp()
         now = datetime.now(timezone.utc)
-        expires = (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+        expires = (
+            now + timedelta(minutes=OTP_EXPIRY_MINUTES)
+        ).isoformat()
+
         try:
             with get_db() as db:
                 existing = db.execute(
-                    "SELECT id, email_verified FROM users WHERE email = ?",
+                    """
+                    SELECT id, email_verified
+                    FROM users
+                    WHERE email = ?
+                    """,
                     (email,),
                 ).fetchone()
+
                 if existing and existing["email_verified"]:
-                    flash("An account with that email already exists. Please log in.", "error")
+                    flash(
+                        "An account with that email already exists. "
+                        "Please log in.",
+                        "error",
+                    )
                     return render_template("signup.html")
+
                 if existing and not existing["email_verified"]:
                     db.execute(
-                        """UPDATE users SET name=?, password_hash=?, verification_code_hash=?,
-                           verification_expires_at=?, verification_attempts=0,
-                           verification_last_sent_at=? WHERE id=?""",
-                        (name, generate_password_hash(password), otp_hash(code, email),
-                         expires, now.isoformat(), existing["id"]),
+                        """
+                        UPDATE users
+                        SET name=?, password_hash=?, verification_code_hash=?,
+                            verification_expires_at=?, verification_attempts=0,
+                            verification_last_sent_at=?
+                        WHERE id=?
+                        """,
+                        (
+                            name,
+                            generate_password_hash(password),
+                            otp_hash(code, email),
+                            expires,
+                            now.isoformat(),
+                            existing["id"],
+                        ),
                     )
                     user_id = existing["id"]
                 else:
                     cursor = db.execute(
-                        """INSERT INTO users
-                           (name, email, password_hash, plan, email_verified,
+                        """
+                        INSERT INTO users
+                        (
+                            name, email, password_hash, plan, email_verified,
                             verification_code_hash, verification_expires_at,
-                            verification_attempts, verification_last_sent_at)
-                           VALUES (?, ?, ?, 'free', 0, ?, ?, 0, ?)""",
-                        (name, email, generate_password_hash(password),
-                         otp_hash(code, email), expires, now.isoformat()),
+                            verification_attempts, verification_last_sent_at
+                        )
+                        VALUES (?, ?, ?, 'free', 0, ?, ?, 0, ?)
+                        """,
+                        (
+                            name,
+                            email,
+                            generate_password_hash(password),
+                            otp_hash(code, email),
+                            expires,
+                            now.isoformat(),
+                        ),
                     )
                     user_id = cursor.lastrowid
+
             try:
                 send_verification_email(email, code)
             except Exception:
-                app.logger.exception("Failed to send signup verification email")
-                flash("Your account has been created, but we couldn't send the verification email at this time. Please confirm your email address and select ‘Send a new code’ to try again. If the issue continues, please contact support.", "error")
+                app.logger.exception(
+                    "Failed to send signup verification email"
+                )
+                flash(
+                    "Your account has been created, but we couldn't send "
+                    "the verification email. Check your email settings "
+                    "and select 'Send a new code' to try again.",
+                    "error",
+                )
                 session["pending_verification_user_id"] = user_id
                 return redirect(url_for("verify_email"))
+
             session.clear()
             session["pending_verification_user_id"] = user_id
-            flash("We sent a 6-digit verification code to your email.", "success")
+            flash(
+                "We sent a 6-digit verification code to your email.",
+                "success",
+            )
             return redirect(url_for("verify_email"))
+
         except sqlite3.IntegrityError:
             flash("Could not create this account. Please try again.", "error")
             return render_template("signup.html")
@@ -651,18 +706,29 @@ def signup():
 @app.route("/verify-email", methods=["GET", "POST"])
 def verify_email():
     user_id = session.get("pending_verification_user_id")
+
     if not user_id:
-        flash("Start by creating an account or request a new verification code.", "info")
+        flash(
+            "Start by creating an account or request a new verification code.",
+            "info",
+        )
         return redirect(url_for("signup"))
 
     with get_db() as db:
         user = db.execute(
-            "SELECT id, email, email_verified, verification_code_hash, verification_expires_at, verification_attempts FROM users WHERE id=?",
+            """
+            SELECT id, email, email_verified, verification_code_hash,
+                   verification_expires_at, verification_attempts
+            FROM users
+            WHERE id=?
+            """,
             (user_id,),
         ).fetchone()
+
     if not user:
         session.pop("pending_verification_user_id", None)
         return redirect(url_for("signup"))
+
     if user["email_verified"]:
         session.pop("pending_verification_user_id", None)
         flash("Your email is already verified. Please log in.", "success")
@@ -670,25 +736,55 @@ def verify_email():
 
     if request.method == "POST":
         submitted = request.form.get("otp", "").strip()
+
         if not re.fullmatch(r"\d{6}", submitted):
             flash("Enter the 6-digit code from your email.", "error")
+
         elif user["verification_attempts"] >= OTP_MAX_ATTEMPTS:
             flash("Too many incorrect attempts. Request a new code.", "error")
-        elif not user["verification_expires_at"] or datetime.fromisoformat(user["verification_expires_at"]) < datetime.now(timezone.utc):
+
+        elif (
+            not user["verification_expires_at"]
+            or datetime.fromisoformat(
+                user["verification_expires_at"]
+            ) < datetime.now(timezone.utc)
+        ):
             flash("This code has expired. Request a new code.", "error")
-        elif not secrets.compare_digest(user["verification_code_hash"] or "", otp_hash(submitted, user["email"])):
+
+        elif not secrets.compare_digest(
+            user["verification_code_hash"] or "",
+            otp_hash(submitted, user["email"]),
+        ):
             with get_db() as db:
-                db.execute("UPDATE users SET verification_attempts=verification_attempts+1 WHERE id=?", (user_id,))
+                db.execute(
+                    """
+                    UPDATE users
+                    SET verification_attempts=verification_attempts+1
+                    WHERE id=?
+                    """,
+                    (user_id,),
+                )
             flash("That code is incorrect. Please try again.", "error")
+
         else:
             with get_db() as db:
                 db.execute(
-                    """UPDATE users SET email_verified=1, verification_code_hash=NULL,
-                       verification_expires_at=NULL, verification_attempts=0 WHERE id=?""",
+                    """
+                    UPDATE users
+                    SET email_verified=1,
+                        verification_code_hash=NULL,
+                        verification_expires_at=NULL,
+                        verification_attempts=0
+                    WHERE id=?
+                    """,
                     (user_id,),
                 )
+
             session.pop("pending_verification_user_id", None)
-            flash("Email verified successfully. You can now log in.", "success")
+            flash(
+                "Email verified successfully. You can now log in.",
+                "success",
+            )
             return redirect(url_for("login"))
 
     return render_template("verify_email.html", email=user["email"])
@@ -697,49 +793,89 @@ def verify_email():
 @app.route("/resend-verification", methods=["POST"])
 def resend_verification():
     user_id = session.get("pending_verification_user_id")
+
     if not user_id:
-        flash("Start by creating an account before requesting a verification code.", "info")
+        flash(
+            "Start by creating an account before requesting a verification code.",
+            "info",
+        )
         return redirect(url_for("signup"))
+
     now = datetime.now(timezone.utc)
+
     with get_db() as db:
         user = db.execute(
-            "SELECT id, email, email_verified, verification_last_sent_at FROM users WHERE id=?",
+            """
+            SELECT id, email, email_verified, verification_last_sent_at
+            FROM users
+            WHERE id=?
+            """,
             (user_id,),
         ).fetchone()
+
     if not user:
         session.pop("pending_verification_user_id", None)
         return redirect(url_for("signup"))
+
     if user["email_verified"]:
         session.pop("pending_verification_user_id", None)
         return redirect(url_for("login"))
+
     last_sent = user["verification_last_sent_at"]
+
     if last_sent:
         try:
-            elapsed = (now - datetime.fromisoformat(last_sent)).total_seconds()
+            elapsed = (
+                now - datetime.fromisoformat(last_sent)
+            ).total_seconds()
+
             if elapsed < OTP_RESEND_SECONDS:
-                flash(f"Please wait {int(OTP_RESEND_SECONDS - elapsed)} seconds before requesting another code.", "error")
+                flash(
+                    f"Please wait {int(OTP_RESEND_SECONDS - elapsed)} "
+                    "seconds before requesting another code.",
+                    "error",
+                )
                 return redirect(url_for("verify_email"))
         except ValueError:
             pass
+
     code = make_otp()
-    expires = (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+    expires = (
+        now + timedelta(minutes=OTP_EXPIRY_MINUTES)
+    ).isoformat()
+
     try:
         send_verification_email(user["email"], code)
     except Exception:
         app.logger.exception("Failed to resend verification email")
-        flash("We couldn't send a verification code right now. Please try again in a moment. If the problem persists, contact support.", "error")
+        flash(
+            "We couldn't send a verification code right now. "
+            "Please try again in a moment.",
+            "error",
+        )
         return redirect(url_for("verify_email"))
+
     with get_db() as db:
         db.execute(
-            """UPDATE users SET verification_code_hash=?, verification_expires_at=?,
-               verification_attempts=0, verification_last_sent_at=? WHERE id=?""",
-            (otp_hash(code, user["email"]), expires, now.isoformat(), user_id),
+            """
+            UPDATE users
+            SET verification_code_hash=?,
+                verification_expires_at=?,
+                verification_attempts=0,
+                verification_last_sent_at=?
+            WHERE id=?
+            """,
+            (
+                otp_hash(code, user["email"]),
+                expires,
+                now.isoformat(),
+                user_id,
+            ),
         )
+
     flash("A new verification code has been sent.", "success")
     return redirect(url_for("verify_email"))
-
-
-# =========================================================
+    # =========================================================
 # 10. LOGIN
 # =========================================================
 
@@ -763,7 +899,9 @@ def login():
                 (email,),
             ).fetchone()
 
-        if not user or not check_password_hash(user["password_hash"], password):
+        if not user or not check_password_hash(
+            user["password_hash"], password
+        ):
             flash("Incorrect email or password.", "error")
             return render_template("login.html")
 
@@ -817,21 +955,13 @@ def generate():
 
     prompt = request.form.get("prompt", "").strip()
     writing_type = request.form.get(
-        "writing_type",
-        "General writing",
+        "writing_type", "General writing"
     ).strip()
     language = request.form.get(
-        "output_language",
-        "English",
+        "output_language", "English"
     ).strip()
-    tone = request.form.get(
-        "tone",
-        "Professional",
-    ).strip()
-    length = request.form.get(
-        "length",
-        "Medium",
-    ).strip()
+    tone = request.form.get("tone", "Professional").strip()
+    length = request.form.get("length", "Medium").strip()
 
     form_data = {
         "prompt": prompt,
@@ -852,7 +982,7 @@ def generate():
         )
         return render_dashboard(form_data=form_data)
 
-    # Validate all option values against server-side allowlists.
+    # Server-side options validation
     if writing_type not in WRITING_TYPES:
         writing_type = "General writing"
 
@@ -909,8 +1039,8 @@ def generate():
     except requests.exceptions.HTTPError as exc:
         app.logger.warning("Ollama HTTP error: %s", exc)
         flash(
-            "Ollama returned an error. Check that your configured "
-            "model is installed.",
+            "Ollama returned an error. Check that your configured model "
+            "is installed.",
             "error",
         )
         return render_dashboard(form_data=form_data)
@@ -931,7 +1061,7 @@ def generate():
         )
         return render_dashboard(form_data=form_data)
 
-    # Save only successfully generated text.
+    # Successfully generated text ko database mein save karo.
     with get_db() as db:
         db.execute(
             """
@@ -984,7 +1114,7 @@ def plans():
 @app.route("/upgrade", methods=["POST"])
 @login_required
 def upgrade():
-    # Paid access must not be granted without verified payment.
+    # Payment verify hue baghair paid access activate nahi karna.
     flash(
         "Online payments are not connected yet. Paid plans are not "
         "activated automatically. Keep using your current plan for now.",
@@ -1014,29 +1144,52 @@ def account():
             email = request.form.get("email", "").strip().lower()
 
             if not name or len(name) < 2 or len(name) > 80:
-                flash("Enter a name between 2 and 80 characters.", "error")
-            elif not email or "@" not in email or len(email) > 254:
+                flash(
+                    "Enter a name between 2 and 80 characters.",
+                    "error",
+                )
+
+            elif (
+                not email
+                or "@" not in email
+                or len(email) > 254
+            ):
                 flash("Please enter a valid email address.", "error")
+
             else:
                 try:
                     with get_db() as db:
                         db.execute(
-                            "UPDATE users SET name = ?, email = ? WHERE id = ?",
+                            """
+                            UPDATE users
+                            SET name = ?, email = ?
+                            WHERE id = ?
+                            """,
                             (name, email, user["id"]),
                         )
+
                     flash("Your profile has been updated.", "success")
                     return redirect(url_for("account"))
+
                 except sqlite3.IntegrityError:
                     flash("That email address is already in use.", "error")
 
         elif action == "password":
-            current_password = request.form.get("current_password", "")
+            current_password = request.form.get(
+                "current_password", ""
+            )
             new_password = request.form.get("new_password", "")
-            confirm_password = request.form.get("confirm_password", "")
+            confirm_password = request.form.get(
+                "confirm_password", ""
+            )
 
             with get_db() as db:
                 password_row = db.execute(
-                    "SELECT password_hash FROM users WHERE id = ?",
+                    """
+                    SELECT password_hash
+                    FROM users
+                    WHERE id = ?
+                    """,
                     (user["id"],),
                 ).fetchone()
 
@@ -1044,22 +1197,38 @@ def account():
                 password_row["password_hash"], current_password
             ):
                 flash("Your current password is incorrect.", "error")
+
             elif len(new_password) < 8:
-                flash("New password must be at least 8 characters.", "error")
+                flash(
+                    "New password must be at least 8 characters.",
+                    "error",
+                )
+
             elif new_password != confirm_password:
                 flash("The new passwords do not match.", "error")
+
             else:
                 with get_db() as db:
                     db.execute(
-                        "UPDATE users SET password_hash = ? WHERE id = ?",
-                        (generate_password_hash(new_password), user["id"]),
+                        """
+                        UPDATE users
+                        SET password_hash = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            generate_password_hash(new_password),
+                            user["id"],
+                        ),
                     )
+
                 flash("Your password has been changed.", "success")
                 return redirect(url_for("account"))
+
         else:
             flash("Invalid account action.", "error")
 
     user = get_current_user()
+
     return render_template(
         "account.html",
         current_user=user,
