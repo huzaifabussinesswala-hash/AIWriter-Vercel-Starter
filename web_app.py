@@ -34,7 +34,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 BASE_DIR = Path(__file__).resolve().parent
 # Load .env from this project folder, even when launched from another directory.
 load_dotenv(dotenv_path=BASE_DIR / ".env", override=False)
-INSTANCE_DIR = BASE_DIR / "instance"
+# Vercel par writable temporary folder use karo
+if os.getenv("VERCEL"):
+    INSTANCE_DIR = Path("/tmp/aiwriter_instance")
+else:
+    INSTANCE_DIR = BASE_DIR / "instance"
+
 INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
