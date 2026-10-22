@@ -70,17 +70,23 @@ def get_positive_int_env(name, default, minimum=1):
         return default
 
 
-DATABASE_PATH = Path(
-    os.getenv(
-        "DATABASE_PATH",
-        str(INSTANCE_DIR / "aiwriter_pro.db"),
-    )
-).expanduser()
+
+# Database path: Vercel par writable temporary storage
+if os.getenv("VERCEL"):
+    DATABASE_PATH = Path("/tmp/aiwriter_pro.db")
+else:
+    DATABASE_PATH = Path(
+        os.getenv(
+            "DATABASE_PATH",
+            str(INSTANCE_DIR / "aiwriter_pro.db"),
+        )
+    ).expanduser()
 
 if not DATABASE_PATH.is_absolute():
     DATABASE_PATH = BASE_DIR / DATABASE_PATH
 
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 
 OLLAMA_URL = os.getenv(
     "OLLAMA_URL",
