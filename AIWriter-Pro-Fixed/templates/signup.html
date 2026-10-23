@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Create account — AIWriter Pro{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <div class="eyebrow">START WRITING</div><h1>Create account</h1><p class="muted">Make your free AIWriter Pro account.</p>
+  <form method="post" class="stack-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="name">Name</label><input id="name" name="name" autocomplete="name" maxlength="100" required>
+    <label for="email">Email address</label><input id="email" type="email" name="email" autocomplete="email" required>
+    <label for="password">Password (at least 8 characters)</label><input id="password" type="password" name="password" minlength="8" autocomplete="new-password" required>
+    <label for="confirm_password">Confirm password</label><input id="confirm_password" type="password" name="confirm_password" minlength="8" autocomplete="new-password" required>
+    <button class="button full" type="submit">Create account</button>
+  </form>
+  <p class="auth-foot">Already registered? <a href="{{ url_for('login') }}">Log in</a></p>
+</section>
+{% endblock %}
