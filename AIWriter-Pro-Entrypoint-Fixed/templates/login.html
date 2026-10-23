@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Log in — AIWriter Pro{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <div class="eyebrow">WELCOME BACK</div><h1>Log in</h1><p class="muted">Continue working on your next great draft.</p>
+  <form method="post" class="stack-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="email">Email address</label><input id="email" type="email" name="email" autocomplete="email" required>
+    <label for="password">Password</label><input id="password" type="password" name="password" autocomplete="current-password" required>
+    <button class="button full" type="submit">Log in</button>
+  </form>
+  <p class="auth-foot">New here? <a href="{{ url_for('signup') }}">Create an account</a></p>
+</section>
+{% endblock %}
