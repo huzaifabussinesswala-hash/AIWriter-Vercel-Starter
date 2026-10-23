@@ -1,2 +1,0 @@
-[tool.vercel]
-entrypoint = "AIWriter-Pro-Postgres-Fix.web_app:app"
