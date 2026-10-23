@@ -67,10 +67,13 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
 
 # Enable secure cookies when HTTPS deployment is configured.
-app.config["SESSION_COOKIE_SECURE"] = (
-    os.getenv("COOKIE_SECURE", "0").strip().lower()
-    in ("1", "true", "yes")
+# Vercel par HTTPS hota hai, is liye production session cookie secure honi chahiye.
+# Local development mein COOKIE_SECURE=1 set karna optional hai.
+app.config["SESSION_COOKIE_SECURE"] = IS_SERVERLESS or (
+    os.getenv("COOKIE_SECURE", "0").strip().lower() in ("1", "true", "yes")
 )
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
 csrf = CSRFProtect(app)
 
@@ -368,6 +371,14 @@ def get_current_user():
         ).fetchone()
 
     if row is None:
+        # Vercel Logs mein is message se pata chalega ke session ID hai,
+        # lekin configured database mein us user ka record nahi mil raha.
+        app.logger.warning(
+            "Session user_id=%r exists but no matching user was found. "
+            "Check that DATABASE_URL points to the same persistent database "
+            "used during signup and login.",
+            user_id,
+        )
         session.clear()
         return None
 
@@ -827,6 +838,7 @@ def login():
             return redirect(url_for("verify_email"))
 
         session.clear()
+        session.permanent = True
         session["user_id"] = user["id"]
 
         flash("You are now logged in.", "success")
