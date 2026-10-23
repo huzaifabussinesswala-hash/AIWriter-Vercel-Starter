@@ -1,0 +1,16 @@
+AIWriter Pro - Vercel entrypoint fix
+
+This ZIP matches the layout where your GitHub repository root contains:
+  pyproject.toml
+  AIWriter-Pro-Postgres-Fix/web_app.py
+  AIWriter-Pro-Postgres-Fix/requirements.txt
+  AIWriter-Pro-Postgres-Fix/templates/
+  AIWriter-Pro-Postgres-Fix/static/
+
+IMPORTANT:
+1. Extract the ZIP and upload the CONTENTS (not the outer ZIP folder) to the ROOT of your GitHub repository.
+2. The root pyproject.toml uses the exact entrypoint string Vercel suggested in its error.
+3. In Vercel > Settings > Build and Deployment > Root Directory, select the repository root, because pyproject.toml is at the root.
+4. Commit/push the files and redeploy.
+5. If the same error remains, check that the latest GitHub commit actually contains the root pyproject.toml and this exact folder structure. Vercel may still be deploying a previous commit or using a different Root Directory.
+6. Keep DATABASE_URL and SECRET_KEY configured in Vercel. Configure SMTP variables for OTP and a reachable remote AI provider for generation. Local Ollama at 127.0.0.1 is not reachable from Vercel.

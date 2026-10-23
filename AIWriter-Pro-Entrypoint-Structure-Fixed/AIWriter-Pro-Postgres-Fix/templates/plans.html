@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Plans — AIWriter Pro{% endblock %}
+{% block content %}
+<section class="page-heading"><div class="eyebrow">PLANS & USAGE</div><h1>Choose your writing pace</h1><p class="muted">Paid upgrades are not active until a verified payment provider is integrated.</p></section>
+<div class="plan-grid">
+{% for key, plan in plans.items() %}
+  <article class="plan-card {% if user.plan == key %}current-plan{% endif %}">
+    {% if user.plan == key %}<span class="plan-badge">CURRENT PLAN</span>{% endif %}
+    <h2>{{ plan.name }}</h2><p class="plan-price">{% if key == 'free' %}Free{% elif key == 'pro' %}Pro{% else %}Business{% endif %}</p>
+    <ul><li>{% if plan.daily_limit %}{{ plan.daily_limit }} generations per day{% else %}No daily cap{% endif %}</li><li>{{ plan.monthly_limit }} generations per month</li><li>Writing history</li></ul>
+    {% if user.plan != key %}
+    <form method="post" action="{{ url_for('upgrade') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button secondary full" type="submit">Request upgrade</button></form>
+    {% else %}<button class="button secondary full" type="button" disabled>Current plan</button>{% endif %}
+  </article>
+{% endfor %}
+</div>
+{% endblock %}
