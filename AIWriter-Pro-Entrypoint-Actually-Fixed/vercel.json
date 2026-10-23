@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "AIWriter-Pro-Postgres-Fix/web_app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "AIWriter-Pro-Postgres-Fix/web_app.py"
+    }
+  ]
+}

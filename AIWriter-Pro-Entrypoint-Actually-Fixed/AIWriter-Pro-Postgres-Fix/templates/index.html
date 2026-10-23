@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}AIWriter Pro — Your writing copilot{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow"><span class="dot"></span> YOUR IDEAS, WRITTEN BETTER</div>
+  <h1>From blank page to<br><span>brilliant content.</span></h1>
+  <p class="hero-copy">Create blog posts, product descriptions, emails and marketing copy with a writing workspace designed to keep your ideas moving.</p>
+  <div class="trust-row"><span>✦ Fast drafts</span><span>✦ Flexible tone</span><span>✦ Your creative control</span></div>
+  <div class="hero-actions"><a class="button" href="{{ url_for('signup') }}">Start for free</a><a class="button secondary" href="{{ url_for('login') }}">Log in</a></div>
+</section>
+<section class="features" id="features">
+  <div class="section-kicker">MADE FOR YOUR NEXT BIG IDEA</div><h2>One workspace. Many ways to write.</h2>
+  <div class="feature-grid">
+    <article><div class="feature-icon">✍</div><h3>Blog & articles</h3><p>Turn a topic into a structured first draft you can refine.</p></article>
+    <article><div class="feature-icon">◈</div><h3>Marketing copy</h3><p>Draft product descriptions, campaigns and landing page text.</p></article>
+    <article><div class="feature-icon">↗</div><h3>Social content</h3><p>Get a starting point for posts, captions and short scripts.</p></article>
+  </div>
+</section>
+<section class="cta-panel"><h2>Ready to get your ideas moving?</h2><p>Create a free account to open your writing dashboard.</p><a class="button" href="{{ url_for('signup') }}">Create your account</a></section>
+{% endblock %}
