@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI writing workspace{% endblock %} · AIWriter</title>
+  <meta name="description" content="AIWriter is your focused workspace for emails, blogs, product copy and more.">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% set ep = request.endpoint %}
+  {% if logged_in %}
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('dashboard') }}"><span class="brand-mark">a<span>.</span></span><span>aiwriter<small>CREATIVE WORKSPACE</small></span></a>
+      <div class="side-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Workspace">
+        <a href="{{ url_for('dashboard') }}"{% if ep == 'dashboard' or ep == 'generate' %} aria-current="page"{% endif %}><span class="nav-icon">✳</span> Write something</a>
+        <a href="{{ url_for('history') }}"{% if ep == 'history' %} aria-current="page"{% endif %}><span class="nav-icon">◷</span> Your library</a>
+        <a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}><span class="nav-icon">◇</span> Plans & usage</a>
+      </nav>
+      <div class="side-label side-label-bottom">PREFERENCES</div>
+      <nav class="side-nav"><a href="{{ url_for('account') }}"{% if ep == 'account' %} aria-current="page"{% endif %}><span class="nav-icon">⚙</span> Account settings</a></nav>
+      <div class="sidebar-bottom">
+        <div class="side-tip"><span class="tip-spark">✦</span><strong>A little prompt magic</strong><p>Specific details help create more useful drafts.</p></div>
+        <form class="inline-form signout-form" method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="signout-btn" type="submit">↗ Sign out</button></form>
+      </div>
+    </aside>
+    <div class="app-main-wrap">
+      <header class="workspace-topbar"><div class="breadcrumbs">Workspace <span>/</span> {% block crumb %}{{ 'Your workspace' }}{% endblock %}</div><div class="topbar-right"><span class="online-dot"></span><span class="topbar-status">AI workspace</span><a class="avatar" href="{{ url_for('account') }}" aria-label="Account settings">{{ (session.get('name') or 'A')[:1]|upper }}</a></div></header>
+      <main id="main" class="workspace-main" tabindex="-1">
+  {% else %}
+  <header class="public-header"><div class="public-header-inner"><a class="brand public-brand" href="{{ url_for('index') }}"><span class="brand-mark">a<span>.</span></span><span>aiwriter<small>WRITE WITH CLARITY</small></span></a><button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span>☰</button><nav id="site-nav" class="site-nav" aria-label="Main"><a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}>Plans</a><a href="{{ url_for('login') }}"{% if ep == 'login' %} aria-current="page"{% endif %}>Sign in</a><a class="btn btn-primary btn-small" href="{{ url_for('signup') }}">Get started <span aria-hidden="true">↗</span></a></nav></div></header>
+  <main id="main" class="public-main" tabindex="-1">
+  {% endif %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}<div class="flashes">{% for category, message in messages %}<div class="alert alert-{{ category }}" role="{{ 'alert' if category in ('error', 'warning') else 'status' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  {% if logged_in %}
+      </main>
+      <footer class="workspace-footer"><span>© {{ current_year }} AIWriter</span><span>Made for your next good idea <b>✦</b></span></footer>
+    </div>
+  </div>
+  {% else %}
+    <footer class="public-footer"><span>© {{ current_year }} AIWriter</span><span>Draft boldly. Edit thoughtfully. <b>✦</b></span></footer>
+  {% endif %}
+</body>
+</html>
