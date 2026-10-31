@@ -1,0 +1,8 @@
+tests/
+requirements-dev.txt
+.env
+.env.*
+!.env.example
+instance/
+*.db
+.pytest_cache/
