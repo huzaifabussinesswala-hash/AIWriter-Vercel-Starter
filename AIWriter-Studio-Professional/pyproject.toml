@@ -1,0 +1,20 @@
+[project]
+name = "aiwriter-pro"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+dependencies = [
+    "Flask>=3.0,<4",
+    "Flask-WTF>=1.2,<2",
+    "Werkzeug>=3.0,<4",
+    "psycopg[binary]>=3.2,<4",
+    "python-dotenv>=1.0,<2",
+    "requests>=2.32,<3",
+]
+
+[tool.vercel]
+entrypoint = "web_app:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
