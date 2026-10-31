@@ -1,9 +1,8 @@
 [project]
 name = "aiwriter-pro"
 version = "1.0.0"
-description = "AIWriter Pro - AI writing SaaS built with Flask and PostgreSQL"
 requires-python = ">=3.12"
-# Keep in sync with requirements.txt (tests/test_config.py checks this).
+
 dependencies = [
     "Flask>=3.0,<4",
     "Flask-WTF>=1.2,<2",
@@ -13,7 +12,6 @@ dependencies = [
     "requests>=2.32,<3",
 ]
 
-# Vercel loads the Flask instance named `app` from web_app.py at the repository root.
 [tool.vercel]
 entrypoint = "web_app:app"
 
