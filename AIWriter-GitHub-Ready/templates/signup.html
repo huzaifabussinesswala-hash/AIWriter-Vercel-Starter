@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, csrf %}
+{% block title %}Create your account{% endblock %}
+{% block content %}
+<section class="auth-card card">
+  <h1>Create your account</h1>
+  <p class="muted">We will email you a 6-digit code to verify your address.</p>
+  {% if errors._form %}<div class="alert alert-error" role="alert">{{ errors._form }}</div>{% endif %}
+  <form method="post" action="{{ url_for('signup') }}" data-loading-form id="signup-form">
+    {{ csrf() }}
+    {{ field("name", "Full name", "text", form.name, errors.name, "name", maxlength=100) }}
+    {{ field("email", "Email address", "email", form.email, errors.email, "email", maxlength=254) }}
+    {{ field("password", "Password", "password", "", errors.password, "new-password", hint="At least 8 characters, with a letter and a number.", maxlength=128) }}
+    {{ field("confirm_password", "Confirm password", "password", "", errors.confirm_password, "new-password", maxlength=128) }}
+    <button class="btn btn-primary btn-block" type="submit"><span class="btn-label">Create account</span><span class="spinner" aria-hidden="true"></span></button>
+  </form>
+  <p class="muted center">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
+</section>
+{% endblock %}
