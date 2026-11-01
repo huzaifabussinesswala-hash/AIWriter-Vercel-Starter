@@ -1,152 +1,326 @@
-/* AIWriter Pro front-end enhancements. The site works without JavaScript; this adds
-   loading states, duplicate-submit protection, copy-to-clipboard and small conveniences. */
+
+/* =====================================================
+   AIWRITER STUDIO — COMPLETE FRONTEND JAVASCRIPT
+   ===================================================== */
+
 (function () {
   'use strict';
 
-  // ---- Workspace sidebar collapse / restore ------------------------------
+  /* -----------------------------------------------------
+     SIDEBAR COLLAPSE / RESTORE
+     ----------------------------------------------------- */
+
   var sidebarToggle = document.getElementById('sidebar-toggle');
   var appShell = document.querySelector('.app-shell');
 
   if (sidebarToggle && appShell) {
-    var savedSidebarState = null;
-    try {
-      savedSidebarState = window.localStorage.getItem('aiwriter-sidebar-collapsed');
-    } catch (e) {}
+    var storageKey = 'aiwriter-sidebar-collapsed';
 
-    if (savedSidebarState === 'true') {
-      appShell.classList.add('sidebar-collapsed');
+    function readSidebarState() {
+      try {
+        return window.localStorage.getItem(storageKey) === 'true';
+      } catch (error) {
+        return false;
+      }
     }
 
-    function updateSidebarButton() {
-      var collapsed = appShell.classList.contains('sidebar-collapsed');
-      sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      sidebarToggle.setAttribute('aria-label', collapsed ? 'Show sidebar' : 'Hide sidebar');
-      sidebarToggle.setAttribute('title', collapsed ? 'Show sidebar' : 'Hide sidebar');
-      var label = sidebarToggle.querySelector('.sidebar-toggle-label');
-      if (label) label.textContent = collapsed ? 'Show sidebar' : 'Hide sidebar';
-    }
-
-    updateSidebarButton();
-
-    sidebarToggle.addEventListener('click', function () {
-      appShell.classList.toggle('sidebar-collapsed');
+    function saveSidebarState(collapsed) {
       try {
         window.localStorage.setItem(
-          'aiwriter-sidebar-collapsed',
-          appShell.classList.contains('sidebar-collapsed') ? 'true' : 'false'
+          storageKey,
+          collapsed ? 'true' : 'false'
         );
-      } catch (e) {}
-      updateSidebarButton();
-    });
-  }
-
-  // ---- Mobile navigation -------------------------------------------------
-  var toggle = document.getElementById('nav-toggle');
-  var nav = document.getElementById('site-nav');
-  if (toggle && nav) {
-    toggle.addEventListener('click', function () {
-      var open = nav.classList.toggle('is-open');
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-  }
-
-  // ---- Loading state + duplicate-submit protection -----------------------
-  function submitButtons(form) {
-    var inside = Array.prototype.slice.call(form.querySelectorAll('button[type="submit"]'));
-    if (form.id) {
-      var outside = document.querySelectorAll('button[type="submit"][form="' + form.id + '"]');
-      inside = inside.concat(Array.prototype.slice.call(outside));
+      } catch (error) {
+        // Storage may be unavailable. The toggle still works.
+      }
     }
-    return inside;
+
+    function updateSidebarState(collapsed) {
+      appShell.classList.toggle(
+        'sidebar-collapsed',
+        collapsed
+      );
+
+      appShell.setAttribute(
+        'data-sidebar-collapsed',
+        collapsed ? 'true' : 'false'
+      );
+
+      sidebarToggle.setAttribute(
+        'aria-expanded',
+        collapsed ? 'false' : 'true'
+      );
+
+      sidebarToggle.setAttribute(
+        'aria-label',
+        collapsed ? 'Show sidebar' : 'Hide sidebar'
+      );
+
+      sidebarToggle.setAttribute(
+        'title',
+        collapsed ? 'Show sidebar' : 'Hide sidebar'
+      );
+
+      var label = sidebarToggle.querySelector(
+        '.sidebar-toggle-label'
+      );
+
+      if (label) {
+        label.textContent = collapsed
+          ? 'Show sidebar'
+          : 'Hide sidebar';
+      }
+    }
+
+    // Restore saved preference on page load.
+    updateSidebarState(readSidebarState());
+
+    // Toggle sidebar on click.
+    sidebarToggle.addEventListener('click', function () {
+      var currentlyCollapsed =
+        appShell.classList.contains('sidebar-collapsed');
+
+      var nextState = !currentlyCollapsed;
+
+      updateSidebarState(nextState);
+      saveSidebarState(nextState);
+    });
   }
 
-  function setBusy(form, busy) {
+  /* -----------------------------------------------------
+     MOBILE PUBLIC NAVIGATION
+     ----------------------------------------------------- */
+
+  var navToggle = document.getElementById('nav-toggle');
+  var siteNav = document.getElementById('site-nav');
+
+  if (navToggle && siteNav) {
+    navToggle.addEventListener('click', function () {
+      var isOpen = siteNav.classList.toggle('is-open');
+
+      navToggle.setAttribute(
+        'aria-expanded',
+        isOpen ? 'true' : 'false'
+      );
+    });
+  }
+
+  /* -----------------------------------------------------
+     FORM SUBMIT HELPERS
+     ----------------------------------------------------- */
+
+  function getSubmitButtons(form) {
+    var buttons = Array.prototype.slice.call(
+      form.querySelectorAll('button[type="submit"]')
+    );
+
+    if (form.id) {
+      var externalButtons = document.querySelectorAll(
+        'button[type="submit"][form="' + form.id + '"]'
+      );
+
+      buttons = buttons.concat(
+        Array.prototype.slice.call(externalButtons)
+      );
+    }
+
+    return buttons;
+  }
+
+  function setFormBusy(form, busy) {
     form.dataset.submitting = busy ? 'true' : 'false';
-    if (busy) { form.setAttribute('aria-busy', 'true'); } else { form.removeAttribute('aria-busy'); }
-    submitButtons(form).forEach(function (button) {
+
+    if (busy) {
+      form.setAttribute('aria-busy', 'true');
+    } else {
+      form.removeAttribute('aria-busy');
+    }
+
+    getSubmitButtons(form).forEach(function (button) {
       button.disabled = busy;
       button.classList.toggle('is-loading', busy);
     });
+
     var status = document.getElementById('generate-status');
+
     if (status && form.id === 'generate-form') {
-      status.textContent = busy ? 'Generating your text. This can take several seconds…' : '';
+      status.textContent = busy
+        ? 'Generating your text. This can take several seconds…'
+        : '';
     }
   }
 
-  document.querySelectorAll('form[data-loading-form]').forEach(function (form) {
+  /* -----------------------------------------------------
+     LOADING STATE AND DOUBLE SUBMIT PROTECTION
+     ----------------------------------------------------- */
+
+  document.querySelectorAll(
+    'form[data-loading-form]'
+  ).forEach(function (form) {
+
     form.addEventListener('submit', function (event) {
       if (form.dataset.submitting === 'true') {
-        event.preventDefault(); // ignore double clicks / repeated Enter
+        event.preventDefault();
         return;
       }
-      // Disable after the browser has captured the form data.
-      window.setTimeout(function () { setBusy(form, true); }, 0);
+
+      // Allow the browser to capture form data first.
+      window.setTimeout(function () {
+        setFormBusy(form, true);
+      }, 0);
     });
-    // Back/forward cache can restore a page in its busy state.
-    window.addEventListener('pageshow', function () { setBusy(form, false); });
+
+    // Reset busy state when returning through browser history.
+    window.addEventListener('pageshow', function () {
+      setFormBusy(form, false);
+    });
   });
 
-  // ---- Prompt character counter -------------------------------------------
+  /* -----------------------------------------------------
+     PROMPT CHARACTER COUNTER
+     ----------------------------------------------------- */
+
   var prompt = document.getElementById('prompt');
   var counter = document.getElementById('prompt-count');
+
   if (prompt && counter) {
-    var max = counter.getAttribute('data-max') || prompt.getAttribute('maxlength');
-    var update = function () { counter.textContent = prompt.value.length + ' / ' + max; };
-    prompt.addEventListener('input', update);
-    update();
+    var max =
+      counter.getAttribute('data-max') ||
+      prompt.getAttribute('maxlength');
+
+    function updatePromptCounter() {
+      counter.textContent =
+        prompt.value.length + ' / ' + max;
+    }
+
+    prompt.addEventListener(
+      'input',
+      updatePromptCounter
+    );
+
+    updatePromptCounter();
   }
 
-  // ---- Copy to clipboard ---------------------------------------------------
+  /* -----------------------------------------------------
+     COPY TO CLIPBOARD
+     ----------------------------------------------------- */
+
   function fallbackCopy(text) {
     var area = document.createElement('textarea');
+
     area.value = text;
     area.setAttribute('readonly', '');
+
     area.style.position = 'fixed';
     area.style.top = '-1000px';
+    area.style.left = '-1000px';
+
     document.body.appendChild(area);
     area.select();
-    var ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+
+    var success = false;
+
+    try {
+      success = document.execCommand('copy');
+    } catch (error) {
+      success = false;
+    }
+
     document.body.removeChild(area);
-    return ok;
+
+    return success;
   }
 
-  document.querySelectorAll('[data-copy-target]').forEach(function (button) {
+  document.querySelectorAll(
+    '[data-copy-target]'
+  ).forEach(function (button) {
+
     button.addEventListener('click', function () {
-      var target = document.querySelector(button.getAttribute('data-copy-target'));
+      var selector = button.getAttribute(
+        'data-copy-target'
+      );
+
+      var target = document.querySelector(selector);
       var status = document.getElementById('copy-status');
-      if (!target) { return; }
+
+      if (!target) {
+        return;
+      }
+
       var text = target.innerText;
-      var done = function (ok) {
-        if (status) { status.textContent = ok ? 'Copied to clipboard.' : 'Copy failed. Select the text and copy it manually.'; }
-        window.setTimeout(function () { if (status) { status.textContent = ''; } }, 3000);
-      };
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+
+      function finishCopy(success) {
+        if (status) {
+          status.textContent = success
+            ? 'Copied to clipboard.'
+            : 'Copy failed. Select the text and copy it manually.';
+        }
+
+        window.setTimeout(function () {
+          if (status) {
+            status.textContent = '';
+          }
+        }, 3000);
+      }
+
+      if (
+        navigator.clipboard &&
+        window.isSecureContext
+      ) {
+        navigator.clipboard.writeText(text)
+          .then(function () {
+            finishCopy(true);
+          })
+          .catch(function () {
+            finishCopy(fallbackCopy(text));
+          });
       } else {
-        done(fallbackCopy(text));
+        finishCopy(fallbackCopy(text));
       }
     });
   });
 
-  // ---- Resend-code cooldown ------------------------------------------------
-  var resend = document.getElementById('resend-btn');
-  var note = document.getElementById('resend-note');
-  if (resend) {
-    var remaining = parseInt(resend.getAttribute('data-cooldown') || '0', 10);
+  /* -----------------------------------------------------
+     OTP RESEND COOLDOWN
+     ----------------------------------------------------- */
+
+  var resendButton = document.getElementById('resend-btn');
+  var resendNote = document.getElementById('resend-note');
+
+  if (resendButton) {
+    var remaining = parseInt(
+      resendButton.getAttribute('data-cooldown') || '0',
+      10
+    );
+
     if (remaining > 0) {
-      resend.disabled = true;
-      var tick = function () {
+      resendButton.disabled = true;
+
+      function countdown() {
         if (remaining <= 0) {
-          resend.disabled = false;
-          if (note) { note.textContent = ''; }
+          resendButton.disabled = false;
+
+          if (resendNote) {
+            resendNote.textContent = '';
+          }
+
           return;
         }
-        if (note) { note.textContent = 'You can request another code in ' + remaining + ' seconds.'; }
+
+        if (resendNote) {
+          resendNote.textContent =
+            'You can request another code in ' +
+            remaining +
+            ' seconds.';
+        }
+
         remaining -= 1;
-        window.setTimeout(tick, 1000);
-      };
-      tick();
+
+        window.setTimeout(countdown, 1000);
+      }
+
+      countdown();
     }
   }
+
 }());
