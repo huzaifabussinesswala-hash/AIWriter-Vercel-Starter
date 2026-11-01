@@ -229,6 +229,41 @@ body {
     }
 }
 
+/* FIX: DESKTOP SIDEBAR COLLAPSE LAYOUT
+   Mobile layout ko touch nahi karna.
+*/
+
+@media (min-width: 851px) {
+
+    /* Sidebar hidden: use one full-width column */
+    .app-shell.sidebar-collapsed {
+        grid-template-columns: minmax(0, 1fr) !important;
+        width: 100% !important;
+    }
+
+    /* Main content must move to the first column */
+    .app-shell.sidebar-collapsed > .app-main-wrap {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Hide sidebar without leaving an empty column */
+    .app-shell.sidebar-collapsed > #workspace-sidebar {
+        display: none !important;
+    }
+
+    /* Keep dashboard content responsive */
+    .app-shell.sidebar-collapsed .workspace-main {
+        width: 100% !important;
+        max-width: 1550px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        min-width: 0 !important;
+    }
+}
+
 /* MOBILE */
 @media (max-width: 600px) {
     .app-shell,
