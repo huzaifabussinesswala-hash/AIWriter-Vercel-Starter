@@ -23,12 +23,12 @@
     var mainWrap = appShell.querySelector('.app-main-wrap');
     var desktopSidebar = window.matchMedia('(min-width: 851px)');
 
-    // Desktop par collapsed sidebar ke baad dashboard ko
-    // remaining full-width column mein shift karo.
     function applySidebarLayout() {
-      var collapsed = appShell.classList.contains('sidebar-collapsed');
-
       if (!mainWrap) return;
+
+      var collapsed = appShell.classList.contains(
+        'sidebar-collapsed'
+      );
 
       if (collapsed && desktopSidebar.matches) {
         appShell.style.setProperty(
@@ -37,12 +37,16 @@
           'important'
         );
 
-        mainWrap.style.setProperty('grid-column', '1', 'important');
+        mainWrap.style.setProperty(
+          'grid-column',
+          '1',
+          'important'
+        );
+
         mainWrap.style.setProperty('width', '100%', 'important');
         mainWrap.style.setProperty('min-width', '0', 'important');
         mainWrap.style.setProperty('max-width', '100%', 'important');
       } else {
-        // Expanded ya mobile layout mein overrides hata do.
         appShell.style.removeProperty('grid-template-columns');
         mainWrap.style.removeProperty('grid-column');
         mainWrap.style.removeProperty('width');
@@ -101,7 +105,6 @@
       updateSidebarButton();
     });
 
-    // Mobile breakpoint cross hone par layout reset rakho.
     if (desktopSidebar.addEventListener) {
       desktopSidebar.addEventListener(
         'change',
