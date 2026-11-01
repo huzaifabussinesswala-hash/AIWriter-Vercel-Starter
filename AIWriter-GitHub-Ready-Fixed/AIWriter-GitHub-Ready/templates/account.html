@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field, csrf %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Account settings</h1>
+  <p class="muted">Plan: <strong>{{ usage_plan.label }}</strong> &middot; Member since {{ user.created_at|dt }}</p>
+</div>
+
+<div class="grid grid-2">
+  <section class="card" aria-labelledby="profile-heading">
+    <h2 id="profile-heading">Profile</h2>
+    <form method="post" action="{{ url_for('update_profile') }}" data-loading-form>
+      {{ csrf() }}
+      {{ field("name", "Full name", "text", name, profile_errors.name, "name", maxlength=100) }}
+      <div class="field">
+        <label for="email-display">Email address</label>
+        <input id="email-display" type="email" value="{{ user.email }}" readonly aria-describedby="email-hint">
+        <p class="hint" id="email-hint">Your email address is verified and cannot be changed here.</p>
+      </div>
+      <button class="btn btn-primary" type="submit"><span class="btn-label">Save profile</span><span class="spinner" aria-hidden="true"></span></button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="password-heading">
+    <h2 id="password-heading">Change password</h2>
+    <form method="post" action="{{ url_for('change_password') }}" data-loading-form>
+      {{ csrf() }}
+      {{ field("current_password", "Current password", "password", "", password_errors.current_password, "current-password", maxlength=128) }}
+      {{ field("new_password", "New password", "password", "", password_errors.new_password, "new-password", hint="At least 8 characters, with a letter and a number.", maxlength=128) }}
+      {{ field("confirm_password", "Confirm new password", "password", "", password_errors.confirm_password, "new-password", maxlength=128) }}
+      <button class="btn btn-primary" type="submit"><span class="btn-label">Change password</span><span class="spinner" aria-hidden="true"></span></button>
+    </form>
+  </section>
+</div>
+{% endblock %}
