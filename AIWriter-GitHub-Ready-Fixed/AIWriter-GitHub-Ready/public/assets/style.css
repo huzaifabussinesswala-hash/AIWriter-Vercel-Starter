@@ -315,3 +315,68 @@ body {
         display: none !important;
     }
 }
+
+/* ==========================================
+   AIWRITER PERMANENT DESKTOP SIDEBAR FIX
+   Mobile layout remains unchanged
+========================================== */
+
+@media (min-width: 851px) {
+
+    /* Sidebar collapsed: one full-width grid column */
+    .app-shell.sidebar-collapsed {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Main wrapper must occupy the full grid */
+    .app-shell.sidebar-collapsed > .app-main-wrap {
+        grid-column: 1 / -1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+    }
+
+    /* Hide sidebar without leaving an empty column */
+    .app-shell.sidebar-collapsed > #workspace-sidebar {
+        display: none !important;
+    }
+
+    /* Topbar full width */
+    .app-shell.sidebar-collapsed .workspace-topbar {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Main content */
+    .app-shell.sidebar-collapsed .workspace-main {
+        width: 100% !important;
+        max-width: 1550px !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Dashboard sections */
+    .app-shell.sidebar-collapsed .dashboard-welcome,
+    .app-shell.sidebar-collapsed .studio-grid,
+    .app-shell.sidebar-collapsed .studio-panel,
+    .app-shell.sidebar-collapsed .studio-rail {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .app-shell.sidebar-collapsed .studio-grid {
+        width: 100% !important;
+    }
+}
