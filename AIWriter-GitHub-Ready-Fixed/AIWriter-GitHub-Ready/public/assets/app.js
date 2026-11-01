@@ -1,28 +1,29 @@
 
-/* AIWriter Pro front-end enhancements */
+/* AIWriter Pro - Main JavaScript */
 (function () {
   'use strict';
 
-  // ---- Workspace sidebar collapse / restore ----
+  // ==========================================
+  // 1. SIDEBAR COLLAPSE / EXPAND
+  // ==========================================
+
   var sidebarToggle = document.getElementById('sidebar-toggle');
   var appShell = document.querySelector('.app-shell');
 
   if (sidebarToggle && appShell) {
-    var savedSidebarState = null;
-
-    try {
-      savedSidebarState = window.localStorage.getItem(
-        'aiwriter-sidebar-collapsed'
-      );
-    } catch (e) {}
-
-    if (savedSidebarState === 'true') {
-      appShell.classList.add('sidebar-collapsed');
-    }
-
     var mainWrap = appShell.querySelector('.app-main-wrap');
     var desktopSidebar = window.matchMedia('(min-width: 851px)');
 
+    // Restore saved sidebar state
+    try {
+      if (
+        localStorage.getItem('aiwriter-sidebar-collapsed') === 'true'
+      ) {
+        appShell.classList.add('sidebar-collapsed');
+      }
+    } catch (error) {}
+
+    // IMPORTANT: Fix desktop grid when sidebar is hidden
     function applySidebarLayout() {
       if (!mainWrap) return;
 
@@ -46,6 +47,7 @@
         mainWrap.style.setProperty('width', '100%', 'important');
         mainWrap.style.setProperty('min-width', '0', 'important');
         mainWrap.style.setProperty('max-width', '100%', 'important');
+
       } else {
         appShell.style.removeProperty('grid-template-columns');
         mainWrap.style.removeProperty('grid-column');
@@ -88,23 +90,26 @@
       applySidebarLayout();
     }
 
+    // Apply saved state on page load
     updateSidebarButton();
 
+    // Toggle sidebar
     sidebarToggle.addEventListener('click', function () {
       appShell.classList.toggle('sidebar-collapsed');
 
       try {
-        window.localStorage.setItem(
+        localStorage.setItem(
           'aiwriter-sidebar-collapsed',
           appShell.classList.contains('sidebar-collapsed')
             ? 'true'
             : 'false'
         );
-      } catch (e) {}
+      } catch (error) {}
 
       updateSidebarButton();
     });
 
+    // Handle screen resizing
     if (desktopSidebar.addEventListener) {
       desktopSidebar.addEventListener(
         'change',
@@ -113,43 +118,49 @@
     } else if (desktopSidebar.addListener) {
       desktopSidebar.addListener(applySidebarLayout);
     }
+
+    window.addEventListener('resize', applySidebarLayout);
   }
 
-  // ---- Mobile navigation ----
-  var toggle = document.getElementById('nav-toggle');
+  // ==========================================
+  // 2. MOBILE NAVIGATION
+  // ==========================================
+
+  var navToggle = document.getElementById('nav-toggle');
   var nav = document.getElementById('site-nav');
 
-  if (toggle && nav) {
-    toggle.addEventListener('click', function () {
+  if (navToggle && nav) {
+    navToggle.addEventListener('click', function () {
       var open = nav.classList.toggle('is-open');
 
-      toggle.setAttribute(
+      navToggle.setAttribute(
         'aria-expanded',
         open ? 'true' : 'false'
       );
     });
   }
 
-  // ---- Loading state + duplicate-submit protection ----
-  function submitButtons(form) {
-    var inside = Array.prototype.slice.call(
+  // ==========================================
+  // 3. FORM LOADING STATE
+  // ==========================================
+
+  function getSubmitButtons(form) {
+    var buttons = Array.from(
       form.querySelectorAll('button[type="submit"]')
     );
 
     if (form.id) {
-      var outside = document.querySelectorAll(
+      var externalButtons = document.querySelectorAll(
         'button[type="submit"][form="' + form.id + '"]'
       );
 
-      inside = inside.concat(
-        Array.prototype.slice.call(outside)
-      );
+      buttons = buttons.concat(Array.from(externalButtons));
     }
 
-    return inside;
+    return buttons;
   }
 
-  function setBusy(form, busy) {
+  function setFormBusy(form, busy) {
     form.dataset.submitting = busy ? 'true' : 'false';
 
     if (busy) {
@@ -158,7 +169,7 @@
       form.removeAttribute('aria-busy');
     }
 
-    submitButtons(form).forEach(function (button) {
+    getSubmitButtons(form).forEach(function (button) {
       button.disabled = busy;
       button.classList.toggle('is-loading', busy);
     });
@@ -167,7 +178,7 @@
 
     if (status && form.id === 'generate-form') {
       status.textContent = busy
-        ? 'Generating your text. This can take several seconds…'
+        ? 'Generating your text. Please wait...'
         : '';
     }
   }
@@ -180,35 +191,45 @@
           return;
         }
 
-        window.setTimeout(function () {
-          setBusy(form, true);
-        }, 0);
-      });
-
-      window.addEventListener('pageshow', function () {
-        setBusy(form, false);
+        setFormBusy(form, true);
       });
     }
   );
 
-  // ---- Prompt character counter ----
+  // Restore form buttons when returning to the page
+  window.addEventListener('pageshow', function () {
+    document.querySelectorAll('form[data-loading-form]').forEach(
+      function (form) {
+        setFormBusy(form, false);
+      }
+    );
+  });
+
+  // ==========================================
+  // 4. PROMPT CHARACTER COUNTER
+  // ==========================================
+
   var prompt = document.getElementById('prompt');
   var counter = document.getElementById('prompt-count');
 
   if (prompt && counter) {
     var max =
       counter.getAttribute('data-max') ||
-      prompt.getAttribute('maxlength');
+      prompt.getAttribute('maxlength') ||
+      '';
 
-    var update = function () {
+    function updateCounter() {
       counter.textContent = prompt.value.length + ' / ' + max;
-    };
+    }
 
-    prompt.addEventListener('input', update);
-    update();
+    prompt.addEventListener('input', updateCounter);
+    updateCounter();
   }
 
-  // ---- Copy to clipboard ----
+  // ==========================================
+  // 5. COPY GENERATED CONTENT
+  // ==========================================
+
   function fallbackCopy(text) {
     var area = document.createElement('textarea');
 
@@ -220,16 +241,16 @@
     document.body.appendChild(area);
     area.select();
 
-    var ok = false;
+    var success = false;
 
     try {
-      ok = document.execCommand('copy');
-    } catch (e) {
-      ok = false;
+      success = document.execCommand('copy');
+    } catch (error) {
+      success = false;
     }
 
     document.body.removeChild(area);
-    return ok;
+    return success;
   }
 
   document.querySelectorAll('[data-copy-target]').forEach(
@@ -245,37 +266,40 @@
 
         var text = target.innerText;
 
-        var done = function (ok) {
+        function showResult(success) {
           if (status) {
-            status.textContent = ok
-              ? 'Copied to clipboard.'
-              : 'Copy failed. Select the text and copy it manually.';
+            status.textContent = success
+              ? 'Copied to clipboard!'
+              : 'Copy failed. Please copy manually.';
           }
 
           window.setTimeout(function () {
             if (status) status.textContent = '';
           }, 3000);
-        };
+        }
 
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard.writeText(text).then(
             function () {
-              done(true);
+              showResult(true);
             },
             function () {
-              done(fallbackCopy(text));
+              showResult(fallbackCopy(text));
             }
           );
         } else {
-          done(fallbackCopy(text));
+          showResult(fallbackCopy(text));
         }
       });
     }
   );
 
-  // ---- Resend-code cooldown ----
+  // ==========================================
+  // 6. RESEND OTP COOLDOWN
+  // ==========================================
+
   var resend = document.getElementById('resend-btn');
-  var note = document.getElementById('resend-note');
+  var resendNote = document.getElementById('resend-note');
 
   if (resend) {
     var remaining = parseInt(
@@ -286,25 +310,30 @@
     if (remaining > 0) {
       resend.disabled = true;
 
-      var tick = function () {
+      function countdown() {
         if (remaining <= 0) {
           resend.disabled = false;
-          if (note) note.textContent = '';
+
+          if (resendNote) {
+            resendNote.textContent = '';
+          }
+
           return;
         }
 
-        if (note) {
-          note.textContent =
+        if (resendNote) {
+          resendNote.textContent =
             'You can request another code in ' +
             remaining +
             ' seconds.';
         }
 
-        remaining -= 1;
-        window.setTimeout(tick, 1000);
-      };
+        remaining--;
+        window.setTimeout(countdown, 1000);
+      }
 
-      tick();
+      countdown();
     }
   }
-}());
+
+})();
