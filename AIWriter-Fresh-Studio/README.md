@@ -1,88 +1,34 @@
-# AIWriter Pro — Flask + Vercel project
+# AIWriter Fresh Studio
 
-This directory is the **application root** for Vercel. In this GitHub repository it is stored at:
+This is a completely separate AIWriter application inside the repository. It has its own Vercel project and root directory:
 
-`AIWriter-GitHub-Ready-Fixed/AIWriter-GitHub-Ready/`
+`AIWriter-Fresh-Studio/`
 
-In Vercel → Project Settings → Build and Deployment → Root Directory, set the exact path above. The files `app.py`, `web_app.py`, `vercel.json`, `pyproject.toml`, `requirements.txt`, `public/`, and `templates/` must all remain together in this directory.
+The previous AIWriter project remains in its existing folder and is not modified by this application.
 
-## Vercel entrypoint
+## Stack
 
-- Vercel loads `app.py`.
-- `app.py` imports the Flask instance named `app` from `web_app.py`.
-- `pyproject.toml` declares `entrypoint = "app:app"`.
-- `vercel.json` routes the Python function through `app.py`.
-- Static assets are stored in `public/assets/` and referenced at `/assets/...`.
+- Flask application with the existing secure authentication, email verification, AI generation, usage accounting and writing history services.
+- A separately authored public website, dashboard, writer workspace and design system.
+- Static assets in `public/assets/`, served at `/assets/`.
+- Vercel Python entrypoint: `app.py` → `web_app.py`.
 
-Do not set the Vercel Root Directory to the outer `AIWriter-GitHub-Ready-Fixed` folder; that folder does not directly contain the Flask entrypoint.
+## Local setup
 
-## Included functionality
-
-- Signup, email OTP, login, history, usage, plans, account, and AI text generation routes.
-- Desktop sidebar hide/show with saved preference.
-- Responsive mobile layout; mobile navigation remains separate from the desktop sidebar collapse.
-- Local Ollama configuration example using the OpenAI-compatible `/v1` endpoint.
-
-## Local setup (Windows)
-
-Use Python 3.12 or newer (the project declares Python `>=3.12`).
+Use Python 3.12 or newer.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
-```
-
-Open `.env`. For local Ollama, keep these values:
-
-```env
-APP_ENV=development
-AI_API_URL=http://127.0.0.1:11434/v1
-AI_API_KEY=
-AI_MODEL=qwen3:1.7b
-AI_TIMEOUT=120
-```
-
-Install and start Ollama, then pull the model:
-
-```powershell
-ollama pull qwen3:1.7b
-ollama serve
-```
-
-Run the app:
-
-```powershell
 python web_app.py
 ```
 
 Open `http://127.0.0.1:5000/`.
 
-## Vercel production environment variables
+Set the environment values from `.env.example` in the separate Vercel project before enabling account registration or generation. Use a dedicated production PostgreSQL database for this independent product; SQLite files on serverless deployments are not persistent.
 
-Set these in Vercel → Project → Settings → Environment Variables, for the Production environment (and Preview too if you deploy previews):
+## Paddle billing
 
-| Variable | Requirement |
-|---|---|
-| `SECRET_KEY` | Required; use a unique random value of at least 32 characters |
-| `DATABASE_URL` | Required; hosted PostgreSQL URL beginning with `postgresql://` or `postgres://` |
-| `COOKIE_SECURE` | Set to `true` |
-| `FLASK_DEBUG` | Set to `false` |
-| `MAIL_SERVER` | Required SMTP hostname |
-| `MAIL_DEFAULT_SENDER` | Required sender email address |
-| `MAIL_USERNAME` / `MAIL_PASSWORD` | Set both, or leave both empty if your SMTP provider does not require authentication |
-| `AI_API_URL` | Required public HTTPS OpenAI-compatible endpoint; it must not be localhost |
-| `AI_API_KEY` | Required key for the hosted AI provider |
-| `AI_MODEL` | Required model name |
-| `AI_TIMEOUT` | Optional; defaults to 30 seconds |
-
-**Important:** Vercel cannot connect to Ollama running on your personal computer at `127.0.0.1`. Configure a hosted AI endpoint for production. Do not paste API keys, database passwords, or your `.env` file into GitHub.
-
-After setting or changing environment variables, redeploy the project. Then open `/health`; a correctly configured app with a reachable database should return `{"status":"ok"}`.
-
-## GitHub structure
-
-Keep the whole project together in this folder. Do not move only `web_app.py` or `app.py` by themselves: the `aiwriter/`, `migrations/`, `public/`, and `templates/` folders are required at runtime.
-
-Never commit `.env`, `.venv/`, local database files, API keys, or production credentials.
+Paddle is not wired into checkout yet. When a Paddle seller account is approved, add Paddle client-side token, API credentials and webhook secret as encrypted Vercel environment variables. Keep card data inside Paddle checkout; never store card numbers or CVV in this application.
