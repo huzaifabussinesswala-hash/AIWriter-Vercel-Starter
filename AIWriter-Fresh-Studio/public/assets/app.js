@@ -8,7 +8,7 @@
   // ==========================================
 
   var sidebarToggle = document.getElementById('sidebar-toggle');
-  var appShell = document.querySelector('.app-shell');
+  var appShell = document.querySelector('.app-frame');
 
   if (sidebarToggle && appShell) {
     var mainWrap = appShell.querySelector('.app-main-wrap');
