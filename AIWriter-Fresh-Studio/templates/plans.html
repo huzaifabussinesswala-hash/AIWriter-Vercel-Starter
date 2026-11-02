@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Plans & usage{% endblock %}
+{% block content %}
+<section class="plans-intro"><span class="section-kicker">PLANS & USAGE</span><h1>A little more room<br><em>for every idea.</em></h1><p>See what's included with each AIWriter plan and choose the space that suits your writing rhythm.</p></section>
+<div class="alert alert-info plan-status-note"><strong>Current payment status:</strong> Online payment upgrades have not been enabled yet. All accounts currently use the Free plan; no card is charged on this website.</div>
+<div class="plans-grid">
+  {% for key, plan in plans.items() %}
+    <article class="plan-card{% if key == 'pro' %} plan-card-featured{% endif %}{% if current_plan == key %} plan-current{% endif %}">
+      {% if key == 'pro' %}<span class="plan-ribbon">FOR YOUR REGULAR WRITING FLOW</span>{% endif %}
+      <div class="plan-card-top"><span class="plan-name">{{ plan.label }}</span>{% if current_plan == key %}<span class="current-plan-label">YOUR PLAN</span>{% endif %}</div>
+      <div class="plan-quantity">{{ plan.monthly }}<small>generations / month</small></div>
+      <p>{% if key == 'free' %}A friendly place to begin and explore the writing studio.{% elif key == 'pro' %}More monthly space for the ideas you work on every day.{% else %}A larger allowance for busy and frequent writing workflows.{% endif %}</p>
+      <ul><li>{% if plan.daily is not none %}{{ plan.daily }} generations each day{% else %}No daily generation cap{% endif %}</li><li>{{ plan.monthly }} generations each month</li><li>All available writing formats</li><li>Available languages and tones</li><li>Saved writing history</li></ul>
+      {% if key == 'free' %}
+        {% if logged_in %}<a class="btn btn-primary btn-block" href="{{ url_for('dashboard') }}">Open your writing room</a>{% else %}<a class="btn btn-primary btn-block" href="{{ url_for('signup') }}">Start for free</a>{% endif %}
+      {% else %}<span class="plan-unavailable">Plan upgrades will be available when billing is connected.</span>{% endif %}
+    </article>
+  {% endfor %}
+</div>
+<p class="plans-footnote">Usage periods are counted in UTC. Only completed generations count toward your allowance.</p>
+{% endblock %}
