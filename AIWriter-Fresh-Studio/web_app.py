@@ -124,9 +124,22 @@ def create_app(env=None) -> Flask:
 
     @app.context_processor
     def inject_globals():
+        problem_text = " ".join(settings.problems)
+        core_ready = not any(key in problem_text for key in (
+            "DATABASE_URL", "SECRET_KEY", "COOKIE_SECURE", "FLASK_DEBUG"
+        ))
+        mail_ready = not any(key in problem_text for key in (
+            "MAIL_SERVER", "MAIL_DEFAULT_SENDER", "MAIL_USERNAME", "MAIL_PASSWORD"
+        ))
+        ai_ready = not any(key in problem_text for key in (
+            "AI_API_URL", "AI_API_KEY", "AI_MODEL"
+        ))
         return {
             "logged_in": bool(session.get("uid")),
             "current_user": getattr(g, "user", None),
+            "auth_ready": core_ready,
+            "signup_ready": core_ready and mail_ready,
+            "generation_ready": core_ready and ai_ready,
             "current_year": utcnow().year,
             "writing_label": lambda k: options.label_for(options.WRITING_TYPES, k),
             "language_label": lambda k: options.label_for(options.LANGUAGES, k),
@@ -148,6 +161,9 @@ def create_app(env=None) -> Flask:
         """
         user_id = session.get("uid")
         if not user_id:
+            return "anonymous", None
+        # No authenticated session can be resolved until this independent app has a DB.
+        if app.extensions.get("db") is None:
             return "anonymous", None
         try:
             with get_db().connection() as conn:
@@ -204,11 +220,41 @@ def create_app(env=None) -> Flask:
         public_preview = request.endpoint in ("index", "plans") or (
             request.endpoint in ("login", "signup") and request.method == "GET"
         )
-        if settings.problems and not public_preview:
-            return render_error(503, "Setup in progress",
-                                "This workspace is being configured. Account features will open once its private services are connected.")
-        if settings.problems and public_preview:
-            return None
+        if settings.problems:
+            problem_text = " ".join(settings.problems)
+            core_missing = any(key in problem_text for key in (
+                "DATABASE_URL", "SECRET_KEY", "COOKIE_SECURE", "FLASK_DEBUG"
+            ))
+            mail_missing = any(key in problem_text for key in (
+                "MAIL_SERVER", "MAIL_DEFAULT_SENDER", "MAIL_USERNAME", "MAIL_PASSWORD"
+            ))
+            ai_missing = any(key in problem_text for key in (
+                "AI_API_URL", "AI_API_KEY", "AI_MODEL"
+            ))
+
+            # Public landing pages and GET-only auth screens remain viewable during setup.
+            if public_preview:
+                return None
+
+            required_missing = []
+            if request.endpoint in ("login", "dashboard", "generate", "history", "account",
+                                    "update_profile", "change_password", "logout"):
+                if core_missing:
+                    required_missing.append("The new workspace database and session settings are not connected yet.")
+            elif request.endpoint in ("signup", "verify_email", "resend_code"):
+                if core_missing:
+                    required_missing.append("The new workspace database and session settings are not connected yet.")
+                if mail_missing:
+                    required_missing.append("The email delivery service is not configured yet.")
+            if request.endpoint == "generate" and ai_missing:
+                required_missing.append("The AI writing service is not configured yet.")
+
+            if required_missing:
+                return render_error(
+                    503, "This feature is not ready yet",
+                    " ".join(required_missing) + " Return to the homepage while setup is completed."
+                )
+
         try:
             ensure_db()
         except DBError:
