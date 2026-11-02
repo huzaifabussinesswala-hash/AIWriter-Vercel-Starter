@@ -6,8 +6,8 @@
   <title>{% block title %}AI writing workspace{% endblock %} · AIWriter</title>
   <meta name="description" content="AIWriter is your focused workspace for emails, blogs, product copy and more.">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261102-1') }}">
-  <script src="{{ url_for('static', filename='app.js', v='sidebar-fix-20261102-1') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='studio-pro-20261102-1') }}">
+  <script src="{{ url_for('static', filename='app.js', v='studio-pro-20261102-1') }}" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -41,7 +41,7 @@
           <div class="breadcrumbs">Workspace <span>/</span> {% block crumb %}{{ 'Your workspace' }}{% endblock %}</div></div><div class="topbar-right"><span class="online-dot"></span><span class="topbar-status">AI workspace</span><a class="avatar" href="{{ url_for('account') }}" aria-label="Account settings">{{ (session.get('name') or 'A')[:1]|upper }}</a></div></header>
       <main id="main" class="workspace-main" tabindex="-1">
   {% else %}
-  <header class="public-header"><div class="public-header-inner"><a class="brand public-brand" href="{{ url_for('index') }}"><span class="brand-mark">a<span>.</span></span><span>aiwriter<small>WRITE WITH CLARITY</small></span></a><button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span>☰</button><nav id="site-nav" class="site-nav" aria-label="Main"><a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}>Plans</a><a href="{{ url_for('login') }}"{% if ep == 'login' %} aria-current="page"{% endif %}>Sign in</a><a class="btn btn-primary btn-small" href="{{ url_for('signup') }}">Get started <span aria-hidden="true">↗</span></a></nav></div></header>
+  <header class="public-header"><div class="public-header-inner"><a class="brand public-brand" href="{{ url_for('index') }}"><span class="brand-mark">a<span>.</span></span><span>aiwriter<small>WRITE WITH CLARITY</small></span></a><button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span>☰</button><nav id="site-nav" class="site-nav" aria-label="Main"><a href="{{ url_for('index') }}#how-it-works">How it works</a><a href="{{ url_for('index') }}#formats">Writing tools</a><a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}>Plans</a><a href="{{ url_for('login') }}"{% if ep == 'login' %} aria-current="page"{% endif %}>Sign in</a><a class="btn btn-primary btn-small" href="{{ url_for('signup') }}">Get started <span aria-hidden="true">↗</span></a></nav></div></header>
   <main id="main" class="public-main" tabindex="-1">
   {% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
