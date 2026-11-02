@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#182538">
+  <title>{% block title %}AIWriter Studio{% endblock %} · AIWriter</title>
+  <meta name="description" content="A thoughtful writing studio for clear emails, articles, product stories and ideas worth sharing.">
+  <meta property="og:site_name" content="AIWriter">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AIWriter — Make words matter">
+  <meta property="og:description" content="Your ideas, shaped into clear and confident writing.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='fresh-studio-01') }}">
+  <script src="{{ url_for('static', filename='app.js', v='fresh-studio-01') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% set ep = request.endpoint %}
+  {% if logged_in %}
+  <div class="app-frame">
+    <aside class="studio-sidebar" id="workspace-sidebar">
+      <a class="studio-brand" href="{{ url_for('dashboard') }}">
+        <span class="brand-symbol"><span></span><span></span><span></span></span>
+        <span>aiwriter<small>THE WRITING STUDIO</small></span>
+      </a>
+      <div class="sidebar-caption">YOUR SPACE</div>
+      <nav class="studio-nav" aria-label="Main workspace">
+        <a href="{{ url_for('dashboard') }}"{% if ep == 'dashboard' or ep == 'generate' %} aria-current="page"{% endif %}><span class="nav-glyph">✎</span><span>New draft</span><kbd>N</kbd></a>
+        <a href="{{ url_for('history') }}"{% if ep == 'history' %} aria-current="page"{% endif %}><span class="nav-glyph">▤</span><span>Your library</span></a>
+        <a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}><span class="nav-glyph">◈</span><span>Plan & usage</span></a>
+      </nav>
+      <div class="sidebar-caption sidebar-caption-lower">ACCOUNT</div>
+      <nav class="studio-nav">
+        <a href="{{ url_for('account') }}"{% if ep == 'account' %} aria-current="page"{% endif %}><span class="nav-glyph">⚙</span><span>Settings</span></a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-note">
+        <span class="sidebar-note-mark">✳</span>
+        <strong>A note for the day</strong>
+        <p>Write the messy first version. The good version comes after.</p>
+      </div>
+      <div class="sidebar-profile">
+        <span class="profile-avatar">{{ (session.get('name') or 'W')[:1]|upper }}</span>
+        <span class="profile-copy"><strong>{{ session.get('name') or 'Writer' }}</strong><small>{{ session.get('email') or 'Your workspace' }}</small></span>
+        <form method="post" action="{{ url_for('logout') }}" class="signout-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" aria-label="Sign out" title="Sign out">↗</button></form>
+      </div>
+    </aside>
+    <div class="app-main-wrap">
+      <header class="workspace-topbar">
+        <div class="topbar-left">
+          <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="workspace-sidebar" aria-label="Hide sidebar" title="Hide sidebar"><span>☰</span><span class="sidebar-toggle-label">Menu</span></button>
+          <div class="breadcrumbs">Studio <span>/</span> {% block crumb %}Workspace{% endblock %}</div>
+        </div>
+        <div class="topbar-right"><span class="topbar-live"><i></i> YOUR CREATIVE SPACE</span><a class="topbar-avatar" href="{{ url_for('account') }}" aria-label="Account settings">{{ (session.get('name') or 'W')[:1]|upper }}</a></div>
+      </header>
+      <main id="main" class="workspace-main" tabindex="-1">
+  {% else %}
+  <header class="public-header">
+    <div class="public-header-inner">
+      <a class="public-brand" href="{{ url_for('index') }}"><span class="brand-symbol"><span></span><span></span><span></span></span><span>aiwriter<small>THE WRITING STUDIO</small></span></a>
+      <button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span>☰</button>
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+        <a href="{{ url_for('index') }}#inside">The studio</a>
+        <a href="{{ url_for('index') }}#how">How it works</a>
+        <a href="{{ url_for('plans') }}"{% if ep == 'plans' %} aria-current="page"{% endif %}>Plans</a>
+        <a class="nav-login" href="{{ url_for('login') }}"{% if ep == 'login' %} aria-current="page"{% endif %}>Sign in</a>
+        <a class="btn btn-nav" href="{{ url_for('signup') }}">Start writing <span>↗</span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="public-main" tabindex="-1">
+  {% endif %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}<div class="flashes">{% for category, message in messages %}<div class="alert alert-{{ category }}" role="{{ 'alert' if category in ('error', 'warning') else 'status' }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  {% if logged_in %}
+      </main>
+      <footer class="workspace-footer"><span>© {{ current_year }} AIWriter Studio</span><span>Make something worth reading <b>✳</b></span></footer>
+    </div>
+  </div>
+  {% else %}
+    <footer class="public-footer"><span>© {{ current_year }} AIWriter</span><span>Good writing starts with a good thought <b>✳</b></span></footer>
+  {% endif %}
+</body>
+</html>
