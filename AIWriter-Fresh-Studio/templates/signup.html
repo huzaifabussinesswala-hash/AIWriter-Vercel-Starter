@@ -21,6 +21,6 @@
     <button class="btn btn-primary btn-block" type="submit" {% if not signup_ready %}disabled aria-disabled="true"{% endif %}><span class="btn-label">Create account</span><span class="spinner" aria-hidden="true"></span></button>
   </form>
   <p class="muted center">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
-  <p class="center"><a class="text-link" href="{{ url_for('index') }}">← Back to home</a></p>
+  <p class="center"><a class="btn btn-outline btn-block" href="{{ url_for('index') }}">← Back to home</a></p>
 </section>
 {% endblock %}
