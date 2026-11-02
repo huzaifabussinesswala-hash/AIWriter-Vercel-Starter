@@ -1287,16 +1287,9 @@ details summary { cursor: pointer; font-weight: 700; margin-bottom: 10px; }
   border-color: #cfd4df;
 }
 
-/* ==========================================
-   PERMANENT DESKTOP SIDEBAR COLLAPSE FIX
-   ========================================== */
-
+/* Sidebar collapse: desktop-only layout correction.
+   Mobile navigation and layout remain governed by the original media queries. */
 @media (min-width: 851px) {
-
-  .app-shell {
-    grid-template-columns: 252px minmax(0, 1fr);
-  }
-
   .app-shell.sidebar-collapsed {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -1307,56 +1300,18 @@ details summary { cursor: pointer; font-weight: 700; margin-bottom: 10px; }
 
   .app-shell.sidebar-collapsed > .app-main-wrap {
     grid-column: 1 / -1 !important;
-    display: flex !important;
-    flex-direction: column !important;
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-  }
-
-  .app-shell.sidebar-collapsed .workspace-topbar {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-  }
-
-  .app-shell.sidebar-collapsed .workspace-main {
-    width: 100% !important;
-    max-width: 1550px !important;
-    min-width: 0 !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-
-  .app-shell.sidebar-collapsed .dashboard-welcome,
-  .app-shell.sidebar-collapsed .studio-grid,
-  .app-shell.sidebar-collapsed .studio-panel,
-  .app-shell.sidebar-collapsed .studio-rail {
-    min-width: 0 !important;
-    max-width: 100% !important;
-  }
-
-  .app-shell.sidebar-collapsed .studio-grid {
-    width: 100% !important;
   }
 }
 
-/* Mobile sidebar behavior remains unchanged */
+/* Sidebar toggle sizing on small screens only; preserve existing mobile layout. */
 @media (max-width: 850px) {
   .topbar-left { gap: 9px; }
-
   .sidebar-toggle {
     min-height: 34px;
     padding: 6px 9px;
   }
-
   .sidebar-toggle-label { display: none; }
-
-  .app-shell.sidebar-collapsed {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell.sidebar-collapsed > .app-main-wrap {
-    grid-column: 1;
-  }
 }
