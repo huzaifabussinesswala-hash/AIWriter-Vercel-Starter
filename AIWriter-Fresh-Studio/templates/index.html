@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Make words matter{% endblock %}
+{% block content %}
+<section class="home-hero">
+  <div class="hero-copy">
+    <div class="hero-kicker"><span class="kicker-line"></span> A WRITING STUDIO FOR YOUR NEXT BIG IDEA</div>
+    <h1>Find the words.<br><em>Make them matter.</em></h1>
+    <p class="hero-lead">A clear space to turn passing thoughts into confident writing. Shape emails, stories, product copy and more — without staring at a blank page.</p>
+    <div class="hero-actions">
+      {% if logged_in %}
+        <a class="btn btn-primary btn-large" href="{{ url_for('dashboard') }}">Open your writing room <span>↗</span></a>
+      {% else %}
+        <a class="btn btn-primary btn-large" href="{{ url_for('signup') }}">Create your free workspace <span>↗</span></a>
+        <a class="btn btn-outline btn-large" href="{{ url_for('login') }}">I already have an account</a>
+      {% endif %}
+    </div>
+    <div class="hero-footnote"><span class="hero-footnote-icon">✳</span><span>For the first draft, the next draft, and every idea in between.</span></div>
+  </div>
+  <div class="hero-art">
+    <div class="art-backdrop art-backdrop-one"></div><div class="art-backdrop art-backdrop-two"></div>
+    <div class="hero-document">
+      <div class="document-top"><div class="document-brand"><span class="brand-symbol mini"><span></span><span></span><span></span></span><span>Untitled draft</span></div><span class="document-tag">A NEW PAGE</span></div>
+      <div class="document-content">
+        <div class="document-eyebrow">THE ART OF A GOOD FIRST LINE</div>
+        <h3>Every great idea<br>begins somewhere.</h3>
+        <p class="document-copy">Somewhere between a thought and the words to explain it, there's a story waiting to happen.</p>
+        <div class="document-rule"></div>
+        <div class="document-line"></div><div class="document-line"></div><div class="document-line short"></div>
+        <div class="document-insight"><span>✦</span><div><strong>Your voice, with a little more clarity.</strong><small>Choose a direction. Make the words yours.</small></div></div>
+      </div>
+      <div class="document-footer"><span>✎  A draft in progress</span><span>01 / 03</span></div>
+    </div>
+    <div class="floating-sticker sticker-tone"><span class="sticker-icon">◉</span><div><b>Set the tone</b><small>Sound like yourself.</small></div></div>
+    <div class="floating-sticker sticker-idea"><span class="sticker-check">✓</span><div><b>Keep the good bits</b><small>Your drafts stay in your library.</small></div></div>
+    <span class="art-spark art-spark-one">✳</span><span class="art-spark art-spark-two">✦</span>
+  </div>
+</section>
+
+<section class="proof-band" aria-label="Writing options">
+  <div><strong>09</strong><span>ways to write</span></div><i></i><div><strong>08</strong><span>output languages</span></div><i></i><div><strong>06</strong><span>tones of voice</span></div><i></i><div><strong>03</strong><span>draft lengths</span></div>
+</section>
+
+<section class="home-section" id="inside">
+  <div class="section-heading">
+    <span class="section-kicker">A TOOLKIT FOR THE PAGE</span>
+    <h2>Whatever you're writing,<br><em>start with a better brief.</em></h2>
+    <p>One calm workspace. Plenty of ways to shape the words you need.</p>
+  </div>
+  <div class="feature-layout">
+    <article class="feature-main">
+      <div class="feature-symbol symbol-blue">✎</div><span class="feature-label">01 / FIND YOUR START</span>
+      <h3>Get past the blank page.</h3><p>Bring a rough thought, a few bullet points or a detailed brief. Give your idea a direction and let the first draft take shape.</p>
+      <div class="feature-paper"><span>YOUR BRIEF</span><b>Who is it for?</b><b>What should it say?</b><b>What should happen next?</b><div class="paper-pencil">✳</div></div>
+    </article>
+    <div class="feature-stack">
+      <article class="feature-mini"><div class="feature-symbol symbol-orange">↗</div><div><span class="feature-label">02 / SHAPE THE VOICE</span><h3>Make the tone fit.</h3><p>Friendly, professional, persuasive and more.</p></div></article>
+      <article class="feature-mini"><div class="feature-symbol symbol-green">文</div><div><span class="feature-label">03 / WRITE YOUR WAY</span><h3>Language that feels natural.</h3><p>Choose English, Urdu, Roman Urdu and more.</p></div></article>
+      <article class="feature-mini"><div class="feature-symbol symbol-lilac">▤</div><div><span class="feature-label">04 / KEEP THE GOOD ONES</span><h3>Your ideas, in one library.</h3><p>Revisit saved generations whenever you need them.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section class="how-section" id="how">
+  <div class="section-heading section-heading-light">
+    <span class="section-kicker">A SIMPLE CREATIVE RITUAL</span>
+    <h2>Three steps.<br><em>One good first draft.</em></h2>
+  </div>
+  <div class="how-steps">
+    <article><span class="step-no">01</span><div class="step-icon">✍</div><h3>Put the thought down.</h3><p>Tell us what you're trying to write, who it's for and the point you want to make.</p></article>
+    <article><span class="step-no">02</span><div class="step-icon">◈</div><h3>Choose your direction.</h3><p>Set the format, language, tone and length to match the job.</p></article>
+    <article><span class="step-no">03</span><div class="step-icon">↗</div><h3>Shape the final words.</h3><p>Review your draft, copy it, create another version and keep the ones you love.</p></article>
+  </div>
+</section>
+
+<section class="writing-types-section">
+  <div class="section-heading section-heading-row"><div><span class="section-kicker">A PAGE FOR EVERY PURPOSE</span><h2>What are we writing <em>today?</em></h2></div><p>From a quick reply to a longer article, give each idea the format it deserves.</p></div>
+  <div class="writing-type-grid">
+    <article><span class="type-icon type-blue">✉</span><h3>Emails</h3><p>Welcomes, replies and thoughtful outreach.</p></article>
+    <article><span class="type-icon type-orange">▤</span><h3>Blog posts</h3><p>Introductions, explainers and long-form ideas.</p></article>
+    <article><span class="type-icon type-green">◇</span><h3>Product copy</h3><p>Product stories that focus on real benefits.</p></article>
+    <article><span class="type-icon type-lilac">#</span><h3>Social posts</h3><p>Captions with a hook and a clear message.</p></article>
+    <article><span class="type-icon type-yellow">✦</span><h3>Ad copy</h3><p>Persuasive words with a reason to act.</p></article>
+    <article><span class="type-icon type-slate">⌘</span><h3>Website & SEO</h3><p>Headlines, page copy and meta descriptions.</p></article>
+  </div>
+</section>
+
+<section class="home-plan-section" id="plans">
+  <div class="plan-intro"><span class="section-kicker">A GOOD PLACE TO BEGIN</span><h2>Make room for<br><em>more good ideas.</em></h2><p>Start free, see what's included and find a writing rhythm that works for you.</p><a class="text-link" href="{{ url_for('plans') }}">Explore plans & usage <span>→</span></a></div>
+  <div class="home-plan-cards">
+    {% for key, plan in plans.items() %}
+      <article class="home-plan-mini{% if key == 'pro' %} is-highlighted{% endif %}"><span>{{ plan.label }}</span><strong>{{ plan.monthly }}</strong><small>generations / month</small></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="closing-banner">
+  <div><span class="section-kicker">YOUR NEXT SENTENCE IS WAITING</span><h2>Don't wait for the perfect words.<br><em>Start with the first ones.</em></h2></div>
+  {% if logged_in %}<a class="btn btn-light btn-large" href="{{ url_for('dashboard') }}">Go to your studio ↗</a>{% else %}<a class="btn btn-light btn-large" href="{{ url_for('signup') }}">Start writing for free ↗</a>{% endif %}
+</section>
+{% endblock %}
