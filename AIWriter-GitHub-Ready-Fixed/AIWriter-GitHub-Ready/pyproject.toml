@@ -13,7 +13,7 @@ dependencies = [
     "requests>=2.32,<3",
 ]
 
-# Vercel loads the Flask instance named `app` from web_app.py at the repository root.
+# Vercel Root Directory must be this folder (the folder containing web_app.py).
 [tool.vercel]
 entrypoint = "web_app:app"
 
