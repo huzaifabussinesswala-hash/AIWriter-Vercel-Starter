@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Your writing room{% endblock %}
+{% block crumb %}New draft{% endblock %}
+{% block content %}
+<section class="writing-welcome">
+  <div><span class="section-kicker">YOUR WRITING ROOM</span><h1>Good to see you, {{ user.name.split(' ')[0] if user.name else 'writer' }}.</h1><p>What's on your mind today? Let's give it some words.</p></div>
+  <div class="welcome-plan-pill"><span class="plan-pill-dot"></span><div><small>YOUR PLAN</small><strong>{{ usage.plan_label }}</strong></div><a href="{{ url_for('plans') }}" aria-label="View plans">↗</a></div>
+</section>
+
+<section class="usage-overview">
+  <article><span class="usage-icon usage-blue">✦</span><div><small>MONTHLY WRITES LEFT</small><strong>{{ usage.monthly_remaining }}<i> / {{ usage.monthly_limit }}</i></strong></div><a href="{{ url_for('plans') }}">View plan</a></article>
+  <article><span class="usage-icon usage-orange">◷</span><div><small>DAILY ALLOWANCE</small><strong>{% if usage.daily_limit is not none %}{{ usage.daily_remaining }}<i> left today</i>{% else %}No cap{% endif %}</strong></div></article>
+  <article><span class="usage-icon usage-green">✎</span><div><small>WRITING FORMATS</small><strong>{{ writing_types|length }}<i> available</i></strong></div></article>
+</section>
+
+<div class="writer-workspace">
+  <section class="composer-panel">
+    <div class="composer-header"><div><span class="section-kicker">LET'S MAKE A DRAFT</span><h2>Start with your idea.</h2><p>A little context goes a long way. Tell us what you're working on.</p></div><div class="composer-decoration">✳</div></div>
+    {% if errors._form %}<div class="alert alert-error" role="alert">{{ errors._form }}</div>{% endif %}
+    <form id="generate-form" method="post" action="{{ url_for('generate') }}" data-loading-form>
+      {{ csrf() }}
+      <div class="writing-options">
+        <div class="field{% if errors.writing_type %} has-error{% endif %}"><label for="writing_type">WRITING FOR</label><select id="writing_type" name="writing_type">{% for key, label in writing_types %}<option value="{{ key }}"{% if form.writing_type == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if errors.writing_type %}<p class="field-error">{{ errors.writing_type }}</p>{% endif %}</div>
+        <div class="field{% if errors.output_language %} has-error{% endif %}"><label for="output_language">LANGUAGE</label><select id="output_language" name="output_language">{% for key, label in languages %}<option value="{{ key }}"{% if form.output_language == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if errors.output_language %}<p class="field-error">{{ errors.output_language }}</p>{% endif %}</div>
+        <div class="field{% if errors.tone %} has-error{% endif %}"><label for="tone">VOICE</label><select id="tone" name="tone">{% for key, label in tones %}<option value="{{ key }}"{% if form.tone == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if errors.tone %}<p class="field-error">{{ errors.tone }}</p>{% endif %}</div>
+        <div class="field{% if errors.length %} has-error{% endif %}"><label for="length">LENGTH</label><select id="length" name="length">{% for key, label in lengths %}<option value="{{ key }}"{% if form.length == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if errors.length %}<p class="field-error">{{ errors.length }}</p>{% endif %}</div>
+      </div>
+
+      <div class="prompt-starters">
+        <div class="starter-heading"><span>NEED A LITTLE INSPIRATION?</span><small>Tap to use an idea</small></div>
+        <div class="starter-list">
+          <button type="button" data-prompt-starter data-writing-type="email" data-prompt="Write a warm, professional welcome email for new customers. Thank them for joining, introduce the main benefit of my business, and end with one clear next step."><span class="starter-emoji starter-email">✉</span><span><b>Welcome email</b><small>A thoughtful first hello</small></span><i>↗</i></button>
+          <button type="button" data-prompt-starter data-writing-type="blog_post" data-prompt="Write a helpful blog post for beginners about my chosen topic. Start with an engaging introduction, explain the main points in clear sections, include practical examples and end with a useful conclusion."><span class="starter-emoji starter-blog">▤</span><span><b>Blog article</b><small>Turn knowledge into a story</small></span><i>↗</i></button>
+          <button type="button" data-prompt-starter data-writing-type="social" data-prompt="Write an engaging social media post for my business. Start with a strong hook, explain the most useful benefit for my audience, and finish with a natural call to action."><span class="starter-emoji starter-social">#</span><span><b>Social post</b><small>Find the right opening line</small></span><i>↗</i></button>
+        </div>
+      </div>
+
+      <div class="field prompt-field{% if errors.prompt %} has-error{% endif %}">
+        <div class="prompt-label-row"><label for="prompt">YOUR BRIEF</label><span class="brief-tip">Be clear. Be yourself.</span></div>
+        <textarea id="prompt" name="prompt" rows="8" maxlength="{{ max_prompt }}" required aria-describedby="prompt-count{% if errors.prompt %} prompt-error{% endif %}" {% if errors.prompt %}aria-invalid="true"{% endif %} placeholder="I want to write a thoughtful email to...&#10;&#10;The main thing I want readers to understand is...&#10;&#10;I'd like them to feel or do...">{{ form.prompt }}</textarea>
+        <div class="prompt-footer"><span>Include your audience, key details and desired result.</span><span id="prompt-count" data-max="{{ max_prompt }}">{{ form.prompt|length }} / {{ max_prompt }}</span></div>
+        {% if errors.prompt %}<p class="field-error" id="prompt-error">{{ errors.prompt }}</p>{% endif %}
+      </div>
+      <div class="composer-actions"><span class="review-reminder">✳ &nbsp;Your draft is a starting point. Give it your final touch.</span><button id="generate-btn" class="btn btn-primary btn-generate" type="submit"{% if not usage.allowed %} disabled{% endif %}><span class="btn-label">Create my draft</span><span aria-hidden="true">↗</span><span class="spinner" aria-hidden="true"></span></button></div>
+      {% if not usage.allowed %}<p class="hint">You have reached your current generation limit. Check your plan for the reset period.</p>{% endif %}
+      <p id="generate-status" class="hint" role="status" aria-live="polite"></p>
+    </form>
+
+    {% if generation %}
+      <div class="draft-output-section">
+        <div class="draft-heading"><div><span class="section-kicker">YOUR WORDS, READY TO REFINE</span><h2>Here's your first draft.</h2></div><div class="draft-tags"><span>{{ writing_label(generation.writing_type) }}</span><span>{{ language_label(generation.output_language) }}</span><span>{{ tone_label(generation.tone) }}</span></div></div>
+        <div class="draft-meta"><span>{{ generation.generated_text.split()|length }} words</span><span>AIWriter draft</span></div>
+        <div id="output" class="draft-output" tabindex="0">{{ generation.generated_text }}</div>
+        <div class="draft-actions"><button id="copy-btn" class="btn btn-outline" type="button" data-copy-target="#output">Copy text <span>▣</span></button><button class="btn btn-outline" type="button" data-download-target="#output">Download .txt <span>↓</span></button><button class="btn btn-primary" type="submit" form="generate-form" id="regenerate-btn"{% if not usage.allowed %} disabled{% endif %}>Try another version ↗</button><span id="copy-status" class="hint" role="status" aria-live="polite"></span><span id="download-status" class="hint" role="status" aria-live="polite"></span></div>
+      </div>
+    {% endif %}
+  </section>
+
+  <aside class="writer-rail">
+    <section class="rail-card library-card"><div class="rail-heading"><span class="rail-heading-icon">▤</span><div><h3>Your library</h3><p>Pick up where you left off.</p></div></div>
+      {% if recent %}<ul class="recent-drafts">{% for item in recent %}<li><span>{{ writing_label(item.writing_type) }}</span><a href="{{ url_for('dashboard', view=item.id) }}">{{ item.prompt|truncate(62) }}</a><small>{{ item.created_at|dt }}</small></li>{% endfor %}</ul><a class="rail-link" href="{{ url_for('history') }}">See all your drafts <span>→</span></a>
+      {% else %}<div class="rail-empty"><span>✎</span><p>Your drafts will appear here after your first creation.</p></div>{% endif %}
+    </section>
+    <section class="rail-card craft-card"><div class="craft-illustration">✳</div><span class="section-kicker">A SMALL WRITING TIP</span><h3>Give the reader a reason to care.</h3><p>Before you write, ask: what should someone know, feel or do after reading this?</p></section>
+    <section class="usage-card-small"><span>YOUR MONTHLY FLOW</span><strong>{{ usage.monthly_percent }}%</strong><div class="usage-track"><i style="width: {{ usage.monthly_percent }}%"></i></div><small>{{ usage.monthly_used }} of {{ usage.monthly_limit }} generations used</small><a href="{{ url_for('plans') }}">Usage details ↗</a></section>
+  </aside>
+</div>
+{% endblock %}
