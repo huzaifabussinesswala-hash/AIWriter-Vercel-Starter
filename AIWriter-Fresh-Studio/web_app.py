@@ -126,6 +126,7 @@ def create_app(env=None) -> Flask:
     def inject_globals():
         return {
             "logged_in": bool(session.get("uid")),
+            "current_user": getattr(g, "user", None),
             "current_year": utcnow().year,
             "writing_label": lambda k: options.label_for(options.WRITING_TYPES, k),
             "language_label": lambda k: options.label_for(options.LANGUAGES, k),
@@ -198,9 +199,16 @@ def create_app(env=None) -> Flask:
     def guard():
         if request.endpoint in (None, "static", "health"):
             return None
-        if settings.problems:
+        # Keep the independent public landing pages viewable while this fresh deployment is configured.
+        # Account actions and workspace routes remain blocked until their own DB/mail/AI settings exist.
+        public_preview = request.endpoint in ("index", "plans") or (
+            request.endpoint in ("login", "signup") and request.method == "GET"
+        )
+        if settings.problems and not public_preview:
             return render_error(503, "Setup in progress",
-                                "This site is not fully configured yet. Please try again later.")
+                                "This workspace is being configured. Account features will open once its private services are connected.")
+        if settings.problems and public_preview:
+            return None
         try:
             ensure_db()
         except DBError:
