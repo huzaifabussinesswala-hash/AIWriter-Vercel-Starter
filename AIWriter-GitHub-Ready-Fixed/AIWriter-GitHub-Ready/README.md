@@ -1,45 +1,40 @@
-# AIWriter Studio — Complete local + Vercel project
+# AIWriter Pro — Flask + Vercel project
 
-This folder contains the project files at the correct repository root. Keep `web_app.py`, `pyproject.toml`, and `requirements.txt` at the root when uploading to GitHub.
+This directory is the **application root** for Vercel. In this GitHub repository it is stored at:
 
-## Included changes
+`AIWriter-GitHub-Ready-Fixed/AIWriter-GitHub-Ready/`
 
-- White sidebar theme and a working hide/show button with saved preference.
-- Existing signup, email OTP, login, history, usage, plans, account and generation routes retained from the supplied project.
+In Vercel → Project Settings → Build and Deployment → Root Directory, set the exact path above. The files `app.py`, `web_app.py`, `vercel.json`, `pyproject.toml`, `requirements.txt`, `public/`, and `templates/` must all remain together in this directory.
+
+## Vercel entrypoint
+
+- Vercel loads `app.py`.
+- `app.py` imports the Flask instance named `app` from `web_app.py`.
+- `pyproject.toml` declares `entrypoint = "app:app"`.
+- `vercel.json` routes the Python function through `app.py`.
+- Static assets are stored in `public/assets/` and referenced at `/assets/...`.
+
+Do not set the Vercel Root Directory to the outer `AIWriter-GitHub-Ready-Fixed` folder; that folder does not directly contain the Flask entrypoint.
+
+## Included functionality
+
+- Signup, email OTP, login, history, usage, plans, account, and AI text generation routes.
+- Desktop sidebar hide/show with saved preference.
+- Responsive mobile layout; mobile navigation remains separate from the desktop sidebar collapse.
 - Local Ollama configuration example using the OpenAI-compatible `/v1` endpoint.
-- `check_local_ai.py` to test the configured AI connection without displaying secrets.
-- `.env` and local database files are deliberately excluded from this ZIP. Do not commit your real `.env`.
 
-## Windows local setup
+## Local setup (Windows)
 
-Use Python 3.12 or 3.13.
+Use Python 3.12 or newer (the project declares Python `>=3.12`).
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
-```
-
-Install Ollama from https://ollama.com/download/windows, then in PowerShell:
-
-```powershell
-ollama pull qwen3:1.7b
-ollama list
-```
-
-Ollama normally runs as a background service on Windows. If it is not running, start it from the Start menu or run:
-
-```powershell
-ollama serve
-```
-
-In a second terminal, copy `.env.example` to `.env` if you do not already have your own `.env`:
-
-```powershell
+python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Open `.env` and fill in your own `SECRET_KEY`, email/SMTP values and any database settings you already use. For local Ollama, these values should be:
+Open `.env`. For local Ollama, keep these values:
 
 ```env
 APP_ENV=development
@@ -49,31 +44,45 @@ AI_MODEL=qwen3:1.7b
 AI_TIMEOUT=120
 ```
 
-Do not replace your existing working email or Neon database credentials with placeholders. Keep `.env` on your computer only.
-
-Test Ollama before starting the web app:
+Install and start Ollama, then pull the model:
 
 ```powershell
-python check_local_ai.py
+ollama pull qwen3:1.7b
+ollama serve
 ```
 
-If the test succeeds, initialize the database if needed and start Flask:
+Run the app:
 
 ```powershell
-python -m flask --app web_app init-db
 python web_app.py
 ```
 
-Open http://127.0.0.1:5000/ and sign in. Generate a short draft to confirm the full app flow.
+Open `http://127.0.0.1:5000/`.
 
-## GitHub upload
+## Vercel production environment variables
 
-Upload the **contents of this folder** to the root of the GitHub repository. Do not upload the parent folder as an extra nested layer. Do not upload `.env`, `.venv`, `instance/`, or database files.
+Set these in Vercel → Project → Settings → Environment Variables, for the Production environment (and Preview too if you deploy previews):
 
-## Vercel
+| Variable | Requirement |
+|---|---|
+| `SECRET_KEY` | Required; use a unique random value of at least 32 characters |
+| `DATABASE_URL` | Required; hosted PostgreSQL URL beginning with `postgresql://` or `postgres://` |
+| `COOKIE_SECURE` | Set to `true` |
+| `FLASK_DEBUG` | Set to `false` |
+| `MAIL_SERVER` | Required SMTP hostname |
+| `MAIL_DEFAULT_SENDER` | Required sender email address |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | Set both, or leave both empty if your SMTP provider does not require authentication |
+| `AI_API_URL` | Required public HTTPS OpenAI-compatible endpoint; it must not be localhost |
+| `AI_API_KEY` | Required key for the hosted AI provider |
+| `AI_MODEL` | Required model name |
+| `AI_TIMEOUT` | Optional; defaults to 30 seconds |
 
-The project entrypoint remains `web_app:app`. Local Ollama at `127.0.0.1` works only on the computer running the app; Vercel cannot access your laptop's localhost. For Vercel production, configure a separate public HTTPS AI endpoint and API key in Vercel Environment Variables, plus the production database, mail and secret settings. Never set Vercel's AI URL to `127.0.0.1`.
+**Important:** Vercel cannot connect to Ollama running on your personal computer at `127.0.0.1`. Configure a hosted AI endpoint for production. Do not paste API keys, database passwords, or your `.env` file into GitHub.
 
-## Validation note
+After setting or changing environment variables, redeploy the project. Then open `/health`; a correctly configured app with a reachable database should return `{"status":"ok"}`.
 
-Python source compilation and the base Jinja template syntax were checked while preparing this folder. The full pytest suite could not be executed in the preparation environment because Flask is not installed there; install `requirements-dev.txt` before running `python -m pytest`.
+## GitHub structure
+
+Keep the whole project together in this folder. Do not move only `web_app.py` or `app.py` by themselves: the `aiwriter/`, `migrations/`, `public/`, and `templates/` folders are required at runtime.
+
+Never commit `.env`, `.venv/`, local database files, API keys, or production credentials.
