@@ -4,14 +4,21 @@
 {% block content %}
 <section class="auth-card card">
   <h1>Sign in</h1>
+  {% if not auth_ready %}
+    <div class="alert alert-warning" role="status">
+      <strong>Sign-in is temporarily unavailable.</strong><br>
+      This new website still needs its own database connection. Your previous AIWriter account has not been copied here. The sign-in form will activate once the new database is connected.
+    </div>
+  {% endif %}
   {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
   <form method="post" action="{{ url_for('login') }}" data-loading-form id="login-form">
     {{ csrf() }}
     <input type="hidden" name="next" value="{{ next }}">
     {{ field("email", "Email address", "email", form.email, None, "email", maxlength=254) }}
     {{ field("password", "Password", "password", "", None, "current-password", maxlength=128) }}
-    <button class="btn btn-primary btn-block" type="submit"><span class="btn-label">Sign in</span><span class="spinner" aria-hidden="true"></span></button>
+    <button class="btn btn-primary btn-block" type="submit" {% if not auth_ready %}disabled aria-disabled="true"{% endif %}><span class="btn-label">Sign in</span><span class="spinner" aria-hidden="true"></span></button>
   </form>
   <p class="muted center">New here? <a href="{{ url_for('signup') }}">Create an account</a></p>
+  <p class="center"><a class="text-link" href="{{ url_for('index') }}">← Back to home</a></p>
 </section>
 {% endblock %}
