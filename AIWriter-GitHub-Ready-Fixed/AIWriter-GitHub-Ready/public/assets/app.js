@@ -336,4 +336,57 @@
     }
   }
 
+
+  // ==========================================
+  // 7. QUICK-START PROMPT IDEAS
+  // ==========================================
+
+  document.querySelectorAll('[data-prompt-starter]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var promptField = document.getElementById('prompt');
+      var typeField = document.getElementById('writing_type');
+      var sample = button.getAttribute('data-prompt') || '';
+      var writingType = button.getAttribute('data-writing-type') || '';
+
+      if (!promptField) return;
+      if (typeField && writingType) {
+        typeField.value = writingType;
+        typeField.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      promptField.value = sample;
+      promptField.dispatchEvent(new Event('input', { bubbles: true }));
+      promptField.focus();
+      promptField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+
+  // ==========================================
+  // 8. DOWNLOAD A GENERATED DRAFT
+  // ==========================================
+
+  document.querySelectorAll('[data-download-target]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var selector = button.getAttribute('data-download-target');
+      var target = selector ? document.querySelector(selector) : null;
+      var status = document.getElementById('download-status');
+      if (!target) return;
+
+      try {
+        var blob = new Blob([target.innerText], { type: 'text/plain;charset=utf-8' });
+        var objectUrl = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'aiwriter-draft.txt';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+        if (status) status.textContent = 'Your draft download has started.';
+      } catch (error) {
+        if (status) status.textContent = 'Download failed. Please copy the draft instead.';
+      }
+    });
+  });
+
 })();
