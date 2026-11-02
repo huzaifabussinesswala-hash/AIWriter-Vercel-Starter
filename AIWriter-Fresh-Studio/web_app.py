@@ -1,4 +1,4 @@
-"""AIWriter Pro - Flask application.
+"""AIWriter Studio - Flask application.
 
 Vercel entrypoint: ``web_app:app`` (declared in pyproject.toml under [tool.vercel]).
 """
@@ -279,6 +279,7 @@ def create_app(env=None) -> Flask:
             state, user = load_user()
             if state == "ok":
                 current = user["plan"]
+                g.user = user
         return render_template("plans.html", plans=PLANS, current_plan=current)
 
     # ------------------------------------------------------------------ signup / OTP
@@ -398,7 +399,7 @@ def create_app(env=None) -> Flask:
         if result.status in (otp.OK, otp.ALREADY_VERIFIED):
             session.pop("pending_uid", None)
             if result.status == otp.OK:
-                flash("Email verified. Welcome to AIWriter Pro!", "success")
+                flash("Email verified. Welcome to AIWriter Studio!", "success")
             if session.get("uid") == user["id"]:
                 return redirect(url_for("dashboard"))
             flash("You can now sign in.", "info")
