@@ -15,7 +15,7 @@ dependencies = [
 
 # Vercel Root Directory must be this folder (the folder containing web_app.py).
 [tool.vercel]
-entrypoint = "web_app:app"
+entrypoint = "app:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
