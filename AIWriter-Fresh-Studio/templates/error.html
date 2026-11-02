@@ -1,10 +1,42 @@
-{% extends "base.html" %}
-{% block title %}{{ title }}{% endblock %}
-{% block content %}
-<section class="auth-card card center">
-  <p class="eyebrow">Error {{ status }}</p>
-  <h1>{{ title }}</h1>
-  <p class="muted">{{ message }}</p>
-  <p><a class="btn btn-primary" href="{{ url_for('index') }}">Back to home</a></p>
-</section>
-{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#182538">
+  <title>{{ status }} · {{ title }} · AIWriter</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root{color-scheme:light;--ink:#1c2939;--muted:#778391;--blue:#4969ed;--canvas:#f4f1e9}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:var(--canvas);font:15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+    .error-card{width:min(100%,520px);padding:clamp(25px,6vw,44px);background:#fffefa;border:1px solid #e5e2da;border-radius:16px;box-shadow:0 18px 55px rgba(31,43,58,.09);text-align:center}
+    .brand{display:inline-flex;align-items:center;gap:10px;margin-bottom:30px;color:#1c2939;text-decoration:none;font-weight:900;font-size:1.1rem;letter-spacing:-.04em}
+    .brand-mark{width:35px;height:35px;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:8px;background:#182538;border-radius:10px}
+    .brand-mark i{width:4px;border-radius:4px 4px 1px 1px;background:white}.brand-mark i:first-child{height:9px;background:#ff9b77}.brand-mark i:nth-child(2){height:15px}.brand-mark i:last-child{height:11px;background:#93a8ff}
+    .code{display:block;margin-bottom:10px;color:#bd704f;font-weight:900;font-size:.66rem;letter-spacing:.17em}
+    h1{margin:0 0 12px;font:500 clamp(1.9rem,6vw,2.5rem)/1.1 Georgia,serif;letter-spacing:-.05em}
+    p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.8}
+    .actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:26px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 19px;border-radius:9px;text-decoration:none;font-size:.84rem;font-weight:800}
+    .btn-primary{background:var(--blue);color:white;box-shadow:0 8px 18px rgba(73,105,237,.2)}
+    .btn-secondary{background:#fff;color:#405067;border:1px solid #dfe2e6}
+    .foot{margin-top:27px;color:#a1a6aa;font-size:.65rem}
+  </style>
+</head>
+<body>
+  <main class="error-card">
+    <a class="brand" href="/">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span>aiwriter</span>
+    </a>
+    <span class="code">ERROR {{ status }}</span>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="/">← Back to home</a>
+      <a class="btn btn-secondary" href="/plans">View plans</a>
+    </div>
+    <div class="foot">AIWriter · The Writing Studio</div>
+  </main>
+</body>
+</html>
