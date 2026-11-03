@@ -4,10 +4,13 @@ Vercel entrypoint: ``web_app:app`` (declared in pyproject.toml under [tool.verce
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import os
 import sys
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
@@ -33,6 +36,32 @@ DASHBOARD_RECENT = 5
 _DUMMY_HASH = generate_password_hash("not-a-real-password-1")
 
 log = logging.getLogger("aiwriter")
+
+
+def verify_paddle_signature(raw_body: bytes, signature_header: str, secret: str,
+                            tolerance_seconds: int = 300) -> bool:
+    """Verify Paddle's ts:raw-body HMAC-SHA256 signature and reject stale requests."""
+    if not raw_body or not signature_header or not secret:
+        return False
+    values = {}
+    for part in signature_header.split(";"):
+        key, separator, value = part.strip().partition("=")
+        if separator and key:
+            values.setdefault(key, []).append(value)
+    timestamps = values.get("ts") or []
+    signatures = values.get("h1") or []
+    if not timestamps or not signatures:
+        return False
+    timestamp = timestamps[0]
+    try:
+        timestamp_number = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    if abs(time.time() - timestamp_number) > tolerance_seconds:
+        return False
+    signed_payload = timestamp.encode("utf-8") + b":" + raw_body
+    expected = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(expected, candidate) for candidate in signatures)
 
 
 class RedactingFormatter(logging.Formatter):
@@ -97,7 +126,7 @@ def create_app(env=None) -> Flask:
     if not settings.problems:
         app.extensions["db"] = Database(settings.database_url)
     db_lock = threading.Lock()
-    CSRFProtect(app)
+    csrf = CSRFProtect(app)
 
     # ------------------------------------------------------------------ helpers
 
@@ -140,6 +169,11 @@ def create_app(env=None) -> Flask:
             "auth_ready": core_ready,
             "signup_ready": core_ready and mail_ready,
             "generation_ready": core_ready and ai_ready,
+            "billing_ready": settings.billing_ready,
+            "paddle_client_token": settings.paddle_client_token,
+            "paddle_environment": settings.paddle_environment,
+            "paddle_price_pro": settings.paddle_price_pro,
+            "paddle_price_business": settings.paddle_price_business,
             "current_year": utcnow().year,
             "writing_label": lambda k: options.label_for(options.WRITING_TYPES, k),
             "language_label": lambda k: options.label_for(options.LANGUAGES, k),
@@ -209,11 +243,43 @@ def create_app(env=None) -> Flask:
         local, _, domain = email.partition("@")
         return f"{local[:1]}***@{domain}"
 
+    def make_checkout_reference(user) -> str:
+        """Bind Paddle custom data to the signed-in AIWriter user without trusting raw IDs."""
+        user_id = str(user["id"])
+        payload = f"aiwriter-paddle-user:{user_id}".encode("utf-8")
+        signature = hmac.new(settings.secret_key.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+        return f"{user_id}.{signature}"
+
+    def user_id_from_checkout_reference(custom_data) -> int | None:
+        """Return a user ID only when the Paddle custom-data reference is signed by this app."""
+        if not isinstance(custom_data, dict):
+            return None
+        reference = str(custom_data.get("aiwriter_checkout_ref") or "")
+        user_part, separator, signature = reference.partition(".")
+        if not separator or not user_part.isdigit() or not signature:
+            return None
+        expected = hmac.new(
+            settings.secret_key.encode("utf-8"),
+            f"aiwriter-paddle-user:{user_part}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            return None
+        try:
+            return int(user_part)
+        except ValueError:
+            return None
+
     # ------------------------------------------------------------------ request hooks
 
     @app.before_request
     def guard():
         if request.endpoint in (None, "static", "health"):
+            return None
+        # Paddle webhooks are server-to-server calls and verify their own signature.
+        if request.endpoint == "paddle_webhook":
+            if app.extensions.get("db") is None:
+                return jsonify({"error": "database_not_configured"}), 503
             return None
         # Keep the independent public landing pages viewable while this fresh deployment is configured.
         # Account actions and workspace routes remain blocked until their own DB/mail/AI settings exist.
@@ -269,8 +335,12 @@ def create_app(env=None) -> Flask:
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-            "base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+            "default-src 'self'; script-src 'self' https://cdn.paddle.com; "
+            "connect-src 'self' https://sandbox-api.paddle.com https://api.paddle.com; "
+            "frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; "
+            "base-uri 'self'; form-action 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com; "
+            "frame-ancestors 'none'")
         if settings.cookie_secure:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         if request.endpoint not in ("static",):
