@@ -123,8 +123,18 @@ def create_app(env=None) -> Flask:
     app.extensions["settings"] = settings
     app.extensions["db"] = None
     app.extensions["db_ready"] = False
-    if not settings.problems:
-        app.extensions["db"] = Database(settings.database_url)
+    # Database availability is independent of AI and email provider configuration.
+    # This lets login, existing accounts, and verified billing webhooks work while
+    # optional providers are being configured.
+    problem_text = " ".join(settings.problems)
+    core_config_missing = any(key in problem_text for key in (
+        "DATABASE_URL", "SECRET_KEY", "COOKIE_SECURE", "FLASK_DEBUG"
+    ))
+    if not core_config_missing:
+        try:
+            app.extensions["db"] = Database(settings.database_url)
+        except DBError:
+            log.exception("database driver or connection configuration is unavailable")
     db_lock = threading.Lock()
     csrf = CSRFProtect(app)
 
