@@ -705,3 +705,33 @@ body { background: var(--canvas); color: var(--ink); }
   .studio-sidebar { background: var(--canvas); border-bottom: 1px solid var(--line); }
   .studio-nav a { border-radius: 12px; }
 }
+
+
+/* Billing price hierarchy */
+.plan-price {
+  margin: 17px 0 3px;
+  color: #202b3b;
+  font: 700 2.35rem/1.1 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -.06em;
+}
+.plan-price small {
+  margin-left: 5px;
+  color: #8a95a7;
+  font: 650 .68rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.plan-quantity {
+  margin: 6px 0 13px;
+  color: #657287;
+  font: 750 .82rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.plan-quantity small {
+  display: inline;
+  margin: 0 0 0 5px;
+  color: #98a2b1;
+  font: 600 .63rem/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.plan-status-note { border-radius: 16px; }
+.paddle-checkout-button { width: 100%; }
+#paddle-status { min-height: 1.2em; margin: -5px 0 12px; color: #5268d7; }
