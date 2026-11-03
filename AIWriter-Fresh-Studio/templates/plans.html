@@ -1,21 +1,69 @@
 {% extends "base.html" %}
 {% block title %}Plans & usage{% endblock %}
 {% block content %}
-<section class="plans-intro"><span class="section-kicker">PLANS & USAGE</span><h1>A little more room<br><em>for every idea.</em></h1><p>See what's included with each AIWriter plan and choose the space that suits your writing rhythm.</p></section>
-<div class="alert alert-info plan-status-note"><strong>Current payment status:</strong> Online payment upgrades have not been enabled yet. All accounts currently use the Free plan; no card is charged on this website.</div>
+<section class="plans-intro">
+  <span class="section-kicker">PLANS & USAGE</span>
+  <h1>A little more room<br><em>for every idea.</em></h1>
+  <p>Choose the writing space that matches your workflow. All paid plans renew monthly until canceled.</p>
+</section>
+
+{% if billing_ready and paddle_environment == 'sandbox' %}
+  <div class="alert alert-info plan-status-note"><strong>Sandbox checkout is enabled.</strong> These are test payments only. No real money will be charged.</div>
+{% elif billing_ready %}
+  <div class="alert alert-info plan-status-note"><strong>Secure checkout is enabled.</strong> Payments are processed by Paddle.</div>
+{% else %}
+  <div class="alert alert-info plan-status-note"><strong>Billing setup is not complete yet.</strong> Paid checkout will become available after the Paddle client token, both Price IDs, and webhook secret are added to Vercel.</div>
+{% endif %}
+
+{% if logged_in and billing_ready %}
+  <div id="paddle-checkout-config"
+       data-token="{{ paddle_client_token }}"
+       data-environment="{{ paddle_environment }}"
+       data-checkout-ref="{{ checkout_ref }}"
+       data-customer-email="{{ current_user.email if current_user else '' }}"
+       hidden></div>
+{% endif %}
+<p id="paddle-status" class="hint" role="status" aria-live="polite"></p>
+
 <div class="plans-grid">
   {% for key, plan in plans.items() %}
     <article class="plan-card{% if key == 'pro' %} plan-card-featured{% endif %}{% if current_plan == key %} plan-current{% endif %}">
       {% if key == 'pro' %}<span class="plan-ribbon">FOR YOUR REGULAR WRITING FLOW</span>{% endif %}
-      <div class="plan-card-top"><span class="plan-name">{{ plan.label }}</span>{% if current_plan == key %}<span class="current-plan-label">YOUR PLAN</span>{% endif %}</div>
+      <div class="plan-card-top">
+        <span class="plan-name">{{ plan.label }}</span>
+        {% if current_plan == key %}<span class="current-plan-label">YOUR PLAN</span>{% endif %}
+      </div>
+      <div class="plan-price">{{ display_prices[key] }}<small>{% if key == 'free' %}forever{% else %}/ month{% endif %}</small></div>
       <div class="plan-quantity">{{ plan.monthly }}<small>generations / month</small></div>
       <p>{% if key == 'free' %}A friendly place to begin and explore the writing studio.{% elif key == 'pro' %}More monthly space for the ideas you work on every day.{% else %}A larger allowance for busy and frequent writing workflows.{% endif %}</p>
-      <ul><li>{% if plan.daily is not none %}{{ plan.daily }} generations each day{% else %}No daily generation cap{% endif %}</li><li>{{ plan.monthly }} generations each month</li><li>All available writing formats</li><li>Available languages and tones</li><li>Saved writing history</li></ul>
+      <ul>
+        <li>{% if plan.daily is not none %}{{ plan.daily }} generations each day{% else %}No daily generation cap{% endif %}</li>
+        <li>{{ plan.monthly }} generations each month</li>
+        <li>All available writing formats</li>
+        <li>Available languages and tones</li>
+        <li>Saved writing history</li>
+      </ul>
       {% if key == 'free' %}
-        {% if logged_in %}<a class="btn btn-primary btn-block" href="{{ url_for('dashboard') }}">Open your writing room</a>{% else %}<a class="btn btn-primary btn-block" href="{{ url_for('signup') }}">Start for free</a>{% endif %}
-      {% else %}<span class="plan-unavailable">Plan upgrades will be available when billing is connected.</span>{% endif %}
+        {% if logged_in %}
+          {% if current_plan == 'free' %}<span class="plan-unavailable">Your current plan</span>{% else %}<span class="plan-unavailable">Free plan</span>{% endif %}
+        {% else %}
+          <a class="btn btn-primary btn-block" href="{{ url_for('signup') }}">Start for free</a>
+        {% endif %}
+      {% elif current_plan == key %}
+        <span class="plan-unavailable">You are currently on this plan.</span>
+      {% elif logged_in and billing_ready %}
+        <button class="btn btn-primary btn-block paddle-checkout-button"
+                type="button" data-price-id="{{ price_ids[key] }}"
+                data-plan-name="{{ plan.label }}">
+          Upgrade to {{ plan.label }} <span aria-hidden="true">↗</span>
+        </button>
+      {% elif not logged_in %}
+        <a class="btn btn-primary btn-block" href="{{ url_for('login', next=url_for('plans')) }}">Sign in to upgrade</a>
+      {% else %}
+        <span class="plan-unavailable">Checkout will be enabled when billing setup is complete.</span>
+      {% endif %}
     </article>
   {% endfor %}
 </div>
-<p class="plans-footnote">Usage periods are counted in UTC. Only completed generations count toward your allowance.</p>
+<p class="plans-footnote">Usage periods are counted in UTC. Only completed generations count toward your allowance. Paid subscriptions are managed through Paddle checkout.</p>
 {% endblock %}
