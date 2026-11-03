@@ -96,3 +96,60 @@ def recent_generations(conn, user_id, limit=5, offset=0):
 def get_generation(conn, user_id, generation_id):
     return conn.execute("SELECT * FROM generations WHERE id = ? AND user_id = ?",
                         (generation_id, user_id)).fetchone()
+
+
+# --------------------------------------------------------------------------- Paddle billing
+
+
+def get_paddle_event(conn, event_id):
+    return conn.execute(
+        "SELECT event_id FROM paddle_webhook_events WHERE event_id = ?", (event_id,)
+    ).fetchone()
+
+
+def record_paddle_event(conn, event_id, event_type, occurred_at, now):
+    """Record a processed event once; works on PostgreSQL and modern SQLite."""
+    return conn.execute(
+        "INSERT INTO paddle_webhook_events (event_id, event_type, occurred_at, processed_at) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT (event_id) DO NOTHING",
+        (event_id, event_type, occurred_at, now),
+    ).rowcount == 1
+
+
+def get_paddle_subscription(conn, subscription_id):
+    return conn.execute(
+        "SELECT * FROM paddle_subscriptions WHERE paddle_subscription_id = ?",
+        (subscription_id,),
+    ).fetchone()
+
+
+def upsert_paddle_subscription(
+    conn, subscription_id, user_id, customer_id, price_id, plan, status,
+    current_period_end, last_event_at, now
+):
+    conn.execute(
+        "INSERT INTO paddle_subscriptions (paddle_subscription_id, user_id, paddle_customer_id, "
+        "price_id, plan, status, current_period_end, last_event_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT (paddle_subscription_id) DO UPDATE SET "
+        "user_id = excluded.user_id, paddle_customer_id = excluded.paddle_customer_id, "
+        "price_id = excluded.price_id, plan = excluded.plan, status = excluded.status, "
+        "current_period_end = excluded.current_period_end, last_event_at = excluded.last_event_at, "
+        "updated_at = excluded.updated_at",
+        (subscription_id, user_id, customer_id, price_id, plan, status,
+         current_period_end, last_event_at, now),
+    )
+
+
+def active_paddle_plan(conn, user_id):
+    row = conn.execute(
+        "SELECT plan FROM paddle_subscriptions WHERE user_id = ? "
+        "AND status IN ('active', 'trialing', 'past_due') "
+        "ORDER BY updated_at DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    return row["plan"] if row else "free"
+
+
+def update_user_plan(conn, user_id, plan):
+    conn.execute("UPDATE users SET plan = ? WHERE id = ?", (plan, user_id))
