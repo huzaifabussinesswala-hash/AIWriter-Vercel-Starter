@@ -8,7 +8,7 @@ The previous AIWriter project remains in its existing folder and is not modified
 
 ## Stack
 
-- Flask application with secure authentication, email verification, AI generation, usage accounting and writing history services.
+- Flask application with the existing secure authentication, email verification, AI generation, usage accounting and writing history services.
 - A separately authored public website, dashboard, writer workspace and design system.
 - Static assets in `public/assets/`, served at `/assets/`.
 - Vercel Python entrypoint: `app.py` → `web_app.py`.
@@ -27,7 +27,7 @@ python web_app.py
 
 Open `http://127.0.0.1:5000/`.
 
-Set the environment values from `.env.example` in the separate Vercel project. Use a dedicated production PostgreSQL database for this independent product; SQLite files on serverless deployments are not persistent.
+Set the environment values from `.env.example` in the separate Vercel project before enabling account registration or generation. Use a dedicated production PostgreSQL database for this independent product; SQLite files on serverless deployments are not persistent.
 
 ## Email verification / OTP
 
@@ -45,4 +45,4 @@ Never put an API key or SMTP password in source code or commit a real `.env` fil
 
 ## Paddle billing
 
-Paddle is configured separately from email delivery. Keep card data inside Paddle checkout; never store card numbers or CVV in this application.
+Paddle is not wired into checkout yet. When a Paddle seller account is approved, add Paddle client-side token, API credentials and webhook secret as encrypted Vercel environment variables. Keep card data inside Paddle checkout; never store card numbers or CVV in this application.
