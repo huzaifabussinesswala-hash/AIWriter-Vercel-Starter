@@ -9,6 +9,9 @@ import hmac
 import logging
 import os
 import sys
+from urllib.parse import urlparse
+
+import requests
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -453,6 +456,11 @@ def create_app(env=None) -> Flask:
                     "subscription.created",
                     "subscription.updated",
                     "subscription.canceled",
+                    "subscription.activated",
+                    "subscription.trialing",
+                    "subscription.past_due",
+                    "subscription.paused",
+                    "subscription.resumed",
                 }
                 if event_type not in handled_types:
                     repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
@@ -466,6 +474,14 @@ def create_app(env=None) -> Flask:
                     incoming_status = str(data.get("status") or "unknown").lower()
                     if event_type == "subscription.canceled":
                         incoming_status = "canceled"
+                    elif event_type == "subscription.paused":
+                        incoming_status = "paused"
+                    elif event_type == "subscription.past_due":
+                        incoming_status = "past_due"
+                    elif event_type in ("subscription.activated", "subscription.resumed"):
+                        incoming_status = "active"
+                    elif event_type == "subscription.trialing":
+                        incoming_status = "trialing"
 
                 # A one-off transaction has no subscription_id and must never grant a paid plan.
                 if not subscription_id:
@@ -864,14 +880,79 @@ def create_app(env=None) -> Flask:
     # ------------------------------------------------------------------ account
 
     def render_account(user, *, profile_errors=None, password_errors=None, name=None, status=200):
-        return render_template("account.html", user=user, usage_plan=PLANS.get(user["plan"], PLANS["free"]),
-                               name=name if name is not None else user["name"],
-                               profile_errors=profile_errors or {}, password_errors=password_errors or {}), status
+        paddle_subscription = None
+        try:
+            with get_db().connection() as conn:
+                paddle_subscription = repo.latest_paddle_subscription(conn, user["id"])
+        except DBError:
+            log.exception("account: could not load Paddle subscription details")
+        return render_template(
+            "account.html", user=user, usage_plan=PLANS.get(user["plan"], PLANS["free"]),
+            name=name if name is not None else user["name"],
+            profile_errors=profile_errors or {}, password_errors=password_errors or {},
+            paddle_subscription=paddle_subscription,
+            billing_portal_ready=settings.billing_portal_ready,
+        ), status
 
     @app.get("/account")
     @login_required
     def account():
         return render_account(g.user)
+
+
+    @app.post("/account/billing/portal")
+    @login_required
+    def paddle_customer_portal():
+        """Create a short-lived Paddle customer portal URL for the signed-in user."""
+        if not settings.billing_portal_ready:
+            flash("Billing management is not configured yet. Please contact support.", "warning")
+            return redirect(url_for("account"))
+
+        try:
+            with get_db().connection() as conn:
+                subscription = repo.latest_paddle_subscription(conn, g.user["id"])
+        except DBError:
+            log.exception("billing portal: could not load customer subscription")
+            return db_unavailable()
+
+        if not subscription or not subscription["paddle_customer_id"]:
+            flash("No Paddle customer record is linked to this account yet.", "info")
+            return redirect(url_for("account"))
+
+        api_base = ("https://api.paddle.com" if settings.paddle_environment == "production"
+                    else "https://sandbox-api.paddle.com")
+        endpoint = api_base + "/customers/" + subscription["paddle_customer_id"] + "/portal-sessions"
+        try:
+            response = requests.post(
+                endpoint,
+                headers={
+                    "Authorization": "Bearer " + settings.paddle_api_key,
+                    "Content-Type": "application/json",
+                },
+                json={"subscription_ids": [subscription["paddle_subscription_id"]]},
+                timeout=(3.05, 10),
+            )
+        except requests.RequestException:
+            log.exception("billing portal: Paddle API request failed")
+            flash("Paddle billing portal could not be reached. Please try again.", "error")
+            return redirect(url_for("account"))
+
+        try:
+            response_data = response.json().get("data", {}) if response.status_code in (200, 201) else {}
+            portal_url = (response_data.get("urls") or {}).get("general", {}).get("overview")
+        except (ValueError, AttributeError, TypeError):
+            portal_url = None
+
+        parsed_portal_url = urlparse(portal_url or "")
+        host = (parsed_portal_url.hostname or "").lower()
+        if not response.ok or parsed_portal_url.scheme != "https" or not (
+            host == "paddle.com" or host.endswith(".paddle.com")
+        ):
+            log.warning("billing portal: Paddle returned an unusable response (HTTP %s)", response.status_code)
+            flash("Paddle could not create your billing link. Please try again or contact support.", "error")
+            return redirect(url_for("account"))
+
+        return redirect(portal_url, code=303)
 
     @app.post("/account/profile")
     @login_required
