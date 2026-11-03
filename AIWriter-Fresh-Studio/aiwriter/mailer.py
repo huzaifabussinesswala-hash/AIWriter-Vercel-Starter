@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -54,8 +55,29 @@ def _send_with_resend(settings, message: EmailMessage, to_email: str) -> None:
         ) from None
 
     if not response.ok:
-        # The response body may contain addresses or provider details; log only the status.
-        log.error("Resend API rejected email delivery (HTTP %s)", response.status_code)
+        # Log the provider's actionable error name/message, but never log addresses or secrets.
+        try:
+            provider_error = response.json()
+        except ValueError:
+            provider_error = {}
+
+        error_name = str(provider_error.get("name") or provider_error.get("code") or "unknown")
+        error_message = str(provider_error.get("message") or provider_error.get("error") or "")
+        error_message = re.sub(
+            r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
+            "[email]",
+            error_message,
+            flags=re.IGNORECASE,
+        )
+        error_message = re.sub(r"re_[A-Za-z0-9_-]+", "[redacted-key]", error_message)
+        error_message = re.sub(r"\\s+", " ", error_message).strip()[:240]
+
+        log.error(
+            "Resend API rejected email delivery (HTTP %s, %s): %s",
+            response.status_code,
+            error_name[:80],
+            error_message or "No provider message returned",
+        )
         raise MailError(
             "We could not send the verification email. Please try again in a few minutes."
         )
