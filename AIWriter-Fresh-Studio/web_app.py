@@ -396,7 +396,134 @@ def create_app(env=None) -> Flask:
             if state == "ok":
                 current = user["plan"]
                 g.user = user
-        return render_template("plans.html", plans=PLANS, current_plan=current)
+        user = getattr(g, "user", None)
+        checkout_ref = make_checkout_reference(user) if user else ""
+        price_ids = {
+            "pro": settings.paddle_price_pro,
+            "business": settings.paddle_price_business,
+        }
+        display_prices = {"free": "$0", "pro": "$11.99", "business": "$29.99"}
+        return render_template(
+            "plans.html", plans=PLANS, current_plan=current,
+            checkout_ref=checkout_ref, price_ids=price_ids, display_prices=display_prices,
+        )
+
+    @app.post("/webhooks/paddle")
+    @csrf.exempt
+    def paddle_webhook():
+        """Receive Paddle Billing events and update paid plans only after signature verification."""
+        if not settings.paddle_webhook_secret:
+            return jsonify({"error": "webhook_not_configured"}), 503
+        raw_body = request.get_data(cache=True, as_text=False)
+        signature = request.headers.get("Paddle-Signature", "")
+        if not verify_paddle_signature(raw_body, signature, settings.paddle_webhook_secret):
+            log.warning("paddle webhook rejected: invalid signature")
+            return jsonify({"error": "invalid_signature"}), 401
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "invalid_json"}), 400
+        event_id = str(payload.get("event_id") or "").strip()
+        event_type = str(payload.get("event_type") or "").strip()
+        occurred_at = payload.get("occurred_at")
+        data = payload.get("data") or {}
+        if not event_id or not event_type or not isinstance(data, dict):
+            return jsonify({"error": "invalid_event"}), 400
+
+        try:
+            ensure_db()
+            with get_db().connection() as conn:
+                if repo.get_paddle_event(conn, event_id):
+                    return jsonify({"received": True, "duplicate": True}), 200
+
+                handled_types = {
+                    "transaction.completed",
+                    "subscription.created",
+                    "subscription.updated",
+                    "subscription.canceled",
+                }
+                if event_type not in handled_types:
+                    repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
+                    return jsonify({"received": True, "ignored": True}), 200
+
+                if event_type == "transaction.completed":
+                    subscription_id = data.get("subscription_id")
+                    incoming_status = "active"
+                else:
+                    subscription_id = data.get("id")
+                    incoming_status = str(data.get("status") or "unknown").lower()
+                    if event_type == "subscription.canceled":
+                        incoming_status = "canceled"
+
+                # A one-off transaction has no subscription_id and must never grant a paid plan.
+                if not subscription_id:
+                    repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
+                    return jsonify({"received": True, "subscription": False}), 200
+
+                existing = repo.get_paddle_subscription(conn, subscription_id)
+                custom_data = data.get("custom_data") or {}
+                user_id = user_id_from_checkout_reference(custom_data)
+                if user_id is None and existing:
+                    user_id = existing["user_id"]
+
+                price_id = None
+                for item in data.get("items") or []:
+                    if not isinstance(item, dict):
+                        continue
+                    price = item.get("price") or {}
+                    if isinstance(price, dict):
+                        price_id = price.get("id")
+                    price_id = price_id or item.get("price_id")
+                    if price_id:
+                        break
+                if not price_id and existing:
+                    price_id = existing["price_id"]
+
+                if price_id == settings.paddle_price_pro:
+                    plan = "pro"
+                elif price_id == settings.paddle_price_business:
+                    plan = "business"
+                else:
+                    plan = existing["plan"] if existing else None
+
+                if user_id is None or plan is None:
+                    log.error(
+                        "paddle webhook could not map subscription %s to an AIWriter user/plan; event=%s",
+                        subscription_id, event_id,
+                    )
+                    return jsonify({"error": "subscription_mapping_failed"}), 422
+
+                customer_id = data.get("customer_id") or (existing["paddle_customer_id"] if existing else None)
+                period = data.get("current_billing_period") or {}
+                period_end = period.get("ends_at") if isinstance(period, dict) else None
+
+                # Ignore stale subscription notifications when Paddle delivers events out of order.
+                if existing and existing.get("last_event_at") and occurred_at:
+                    old_time = existing["last_event_at"]
+                    old_text = old_time.isoformat() if hasattr(old_time, "isoformat") else str(old_time)
+                    if str(occurred_at) < old_text:
+                        repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
+                        return jsonify({"received": True, "stale": True}), 200
+
+                repo.upsert_paddle_subscription(
+                    conn, subscription_id, user_id, customer_id, price_id, plan,
+                    incoming_status, period_end, occurred_at, utcnow(),
+                )
+
+                if incoming_status in ("active", "trialing", "past_due"):
+                    repo.update_user_plan(conn, user_id, plan)
+                elif incoming_status in ("canceled", "paused"):
+                    repo.update_user_plan(conn, user_id, repo.active_paddle_plan(conn, user_id))
+
+                repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
+        except DBError:
+            log.exception("paddle webhook database failure")
+            return jsonify({"error": "database_unavailable"}), 503
+        except Exception:
+            log.exception("paddle webhook processing failure")
+            return jsonify({"error": "webhook_processing_failed"}), 500
+
+        return jsonify({"received": True}), 200
 
     # ------------------------------------------------------------------ signup / OTP
 
