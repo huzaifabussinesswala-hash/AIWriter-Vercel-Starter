@@ -420,8 +420,18 @@
         window.Paddle.Initialize({
           token: paddleToken,
           eventCallback: function (event) {
-            if (event && event.name === 'checkout.completed') {
+            if (!event || !event.name) return;
+            if (event.name === 'checkout.loaded') {
+              paddleMessage('Secure checkout is ready.');
+            } else if (event.name === 'checkout.completed') {
               paddleMessage('Payment submitted. Your plan will update after Paddle confirms the subscription.');
+              paddleButtons.forEach(function (button) { button.disabled = false; });
+            } else if (event.name === 'checkout.closed') {
+              paddleMessage('Checkout closed. You can reopen it whenever you are ready.');
+              paddleButtons.forEach(function (button) { button.disabled = false; });
+            } else if (event.name === 'checkout.error') {
+              paddleMessage('Paddle could not open checkout. Please try again.');
+              paddleButtons.forEach(function (button) { button.disabled = false; });
             }
           }
         });
