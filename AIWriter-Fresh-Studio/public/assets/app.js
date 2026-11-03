@@ -389,4 +389,71 @@
     });
   });
 
+
+  // ==========================================
+  // PADDLE CHECKOUT INTEGRATION
+  // ==========================================
+
+  var paddleConfig = document.getElementById('paddle-checkout-config');
+  var paddleButtons = document.querySelectorAll('.paddle-checkout-button');
+
+  if (paddleConfig && paddleButtons.length) {
+    var paddleStatus = document.getElementById('paddle-status');
+    var paddleToken = paddleConfig.getAttribute('data-token');
+    var paddleEnvironment = paddleConfig.getAttribute('data-environment');
+    var checkoutReference = paddleConfig.getAttribute('data-checkout-ref');
+    var customerEmail = paddleConfig.getAttribute('data-customer-email');
+
+    function paddleMessage(message) {
+      if (paddleStatus) paddleStatus.textContent = message;
+    }
+
+    if (!window.Paddle || !paddleToken || !checkoutReference) {
+      paddleMessage('Paddle checkout could not load. Please refresh the page and try again.');
+      paddleButtons.forEach(function (button) { button.disabled = true; });
+    } else {
+      try {
+        if (paddleEnvironment === 'sandbox') {
+          window.Paddle.Environment.set('sandbox');
+        }
+
+        window.Paddle.Initialize({
+          token: paddleToken,
+          eventCallback: function (event) {
+            if (event && event.name === 'checkout.completed') {
+              paddleMessage('Payment submitted. Your plan will update after Paddle confirms the subscription.');
+            }
+          }
+        });
+
+        paddleButtons.forEach(function (button) {
+          button.addEventListener('click', function () {
+            var priceId = button.getAttribute('data-price-id');
+            var planName = button.getAttribute('data-plan-name') || 'plan';
+            if (!priceId) {
+              paddleMessage('This plan is missing its Paddle Price ID.');
+              return;
+            }
+            try {
+              button.disabled = true;
+              paddleMessage('Opening secure Paddle checkout...');
+              window.Paddle.Checkout.open({
+                items: [{ priceId: priceId, quantity: 1 }],
+                customData: { aiwriter_checkout_ref: checkoutReference },
+                customer: customerEmail ? { email: customerEmail } : undefined,
+                settings: { displayMode: 'overlay', theme: 'light' }
+              });
+            } catch (error) {
+              button.disabled = false;
+              paddleMessage('Could not open checkout. Please try again.');
+            }
+          });
+        });
+      } catch (error) {
+        paddleMessage('Paddle could not initialize. Check the Sandbox token and refresh this page.');
+        paddleButtons.forEach(function (button) { button.disabled = true; });
+      }
+    }
+  }
+
 })();
