@@ -7,6 +7,22 @@
   <p class="muted">Plan: <strong>{{ usage_plan.label }}</strong> &middot; Member since {{ user.created_at|dt }}</p>
 </div>
 
+{% if paddle_subscription %}
+<section class="card" aria-labelledby="billing-heading" style="margin-bottom: 1.25rem;">
+  <h2 id="billing-heading">Subscription &amp; billing</h2>
+  <p class="muted">Subscription status: <strong>{{ paddle_subscription.status|replace("_", " ")|title }}</strong></p>
+  {% if billing_portal_ready %}
+    <p class="muted">Manage your subscription, update your payment method, and view or download invoices securely through Paddle.</p>
+    <form method="post" action="{{ url_for('paddle_customer_portal') }}">
+      {{ csrf() }}
+      <button class="btn btn-primary" type="submit">Manage billing &amp; subscription ↗</button>
+    </form>
+  {% else %}
+    <p class="hint">Online billing management is being configured. Please contact support if you need to update or cancel your subscription.</p>
+  {% endif %}
+</section>
+{% endif %}
+
 <div class="grid grid-2">
   <section class="card" aria-labelledby="profile-heading">
     <h2 id="profile-heading">Profile</h2>
