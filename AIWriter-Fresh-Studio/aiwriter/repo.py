@@ -141,6 +141,16 @@ def upsert_paddle_subscription(
     )
 
 
+def latest_paddle_subscription(conn, user_id):
+    """Return the newest Paddle subscription with a customer attached."""
+    return conn.execute(
+        "SELECT * FROM paddle_subscriptions WHERE user_id = ? "
+        "AND paddle_customer_id IS NOT NULL "
+        "ORDER BY updated_at DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+
+
 def active_paddle_plan(conn, user_id):
     row = conn.execute(
         "SELECT plan FROM paddle_subscriptions WHERE user_id = ? "
