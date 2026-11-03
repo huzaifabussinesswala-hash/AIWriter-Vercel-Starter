@@ -11,7 +11,7 @@
   <meta property="og:title" content="AIWriter — Make words matter">
   <meta property="og:description" content="Your ideas, shaped into clear and confident writing.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='checkout-fast-02') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='checkout-fix-03') }}">
   {% if request.endpoint == 'plans' and logged_in and billing_ready %}
     <link rel="preconnect" href="https://cdn.paddle.com" crossorigin>
     {% if paddle_environment == 'sandbox' %}
@@ -21,9 +21,8 @@
       <link rel="preconnect" href="https://checkout.paddle.com" crossorigin>
       <link rel="preconnect" href="https://api.paddle.com" crossorigin>
     {% endif %}
-    <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
   {% endif %}
-  <script src="{{ url_for('static', filename='app.js', v='checkout-fast-02') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js', v='checkout-fix-03') }}" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
