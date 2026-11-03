@@ -21,9 +21,9 @@ def build_otp_message(settings, to_email: str, name: str, code: str, minutes: in
     msg["From"] = settings.mail_default_sender
     msg["To"] = to_email
     msg.set_content(
-        f"Hi {name},\\n\\n"
-        f"Your AIWriter Pro verification code is: {code}\\n\\n"
-        f"It expires in {minutes} minutes. If you did not create an account, you can ignore this email.\\n"
+        f"Hi {name},\n\n"
+        f"Your AIWriter Pro verification code is: {code}\n\n"
+        f"It expires in {minutes} minutes. If you did not create an account, you can ignore this email.\n"
     )
     return msg
 
