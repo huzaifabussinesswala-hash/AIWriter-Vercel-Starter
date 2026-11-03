@@ -56,6 +56,9 @@ class Settings:
     @property
     def billing_ready(self) -> bool:
         """Only enable checkout when credentials match the selected Paddle environment."""
+        if self.paddle_environment not in {"sandbox", "production"}:
+            return False
+
         if not all((
             self.paddle_client_token,
             self.paddle_price_pro,
@@ -64,7 +67,11 @@ class Settings:
         )):
             return False
 
-        if not self.paddle_price_pro.startswith("pri_") or not self.paddle_price_business.startswith("pri_"):
+        if (
+            not self.paddle_price_pro.startswith("pri_")
+            or not self.paddle_price_business.startswith("pri_")
+            or self.paddle_price_pro == self.paddle_price_business
+        ):
             return False
 
         expected_token_prefix = "test_" if self.paddle_environment == "sandbox" else "live_"
