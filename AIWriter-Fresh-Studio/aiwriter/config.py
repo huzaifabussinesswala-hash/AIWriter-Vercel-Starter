@@ -41,6 +41,11 @@ class Settings:
     ai_api_key: str
     ai_model: str
     ai_timeout: float
+    paddle_environment: str
+    paddle_client_token: str
+    paddle_price_pro: str
+    paddle_price_business: str
+    paddle_webhook_secret: str
     problems: tuple = ()
 
     @property
@@ -48,9 +53,17 @@ class Settings:
         return self.environment == "production"
 
     @property
+    def billing_ready(self) -> bool:
+        """True only when checkout identifiers and webhook verification are configured."""
+        return bool(
+            self.paddle_client_token and self.paddle_price_pro
+            and self.paddle_price_business and self.paddle_webhook_secret
+        )
+
+    @property
     def secret_values(self) -> list:
         """Values that must never appear in logs."""
-        values = [self.secret_key, self.mail_password, self.ai_api_key]
+        values = [self.secret_key, self.mail_password, self.ai_api_key, self.paddle_webhook_secret]
         parsed = urlparse(self.database_url)
         if parsed.password:
             values.append(parsed.password)
@@ -132,7 +145,15 @@ def load_settings(env: Mapping | None = None) -> Settings:
         ai_api_key=_text(env, "AI_API_KEY"),
         ai_model=_text(env, "AI_MODEL"),
         ai_timeout=ai_timeout,
+        paddle_environment=_text(env, "PADDLE_ENVIRONMENT", "sandbox").lower(),
+        paddle_client_token=_text(env, "PADDLE_CLIENT_TOKEN"),
+        paddle_price_pro=_text(env, "PADDLE_PRICE_PRO"),
+        paddle_price_business=_text(env, "PADDLE_PRICE_BUSINESS"),
+        paddle_webhook_secret=_text(env, "PADDLE_WEBHOOK_SECRET"),
     )
+
+    if settings_kwargs["paddle_environment"] not in {"sandbox", "production"}:
+        problems.append("PADDLE_ENVIRONMENT must be sandbox or production.")
 
     if production:
         if len(secret_key) < 32:
