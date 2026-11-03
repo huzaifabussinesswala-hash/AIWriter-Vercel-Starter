@@ -55,11 +55,20 @@ class Settings:
 
     @property
     def billing_ready(self) -> bool:
-        """True only when checkout identifiers and webhook verification are configured."""
-        return bool(
-            self.paddle_client_token and self.paddle_price_pro
-            and self.paddle_price_business and self.paddle_webhook_secret
-        )
+        """Only enable checkout when credentials match the selected Paddle environment."""
+        if not all((
+            self.paddle_client_token,
+            self.paddle_price_pro,
+            self.paddle_price_business,
+            self.paddle_webhook_secret,
+        )):
+            return False
+
+        if not self.paddle_price_pro.startswith("pri_") or not self.paddle_price_business.startswith("pri_"):
+            return False
+
+        expected_token_prefix = "test_" if self.paddle_environment == "sandbox" else "live_"
+        return self.paddle_client_token.startswith(expected_token_prefix)
 
     @property
     def secret_values(self) -> list:
