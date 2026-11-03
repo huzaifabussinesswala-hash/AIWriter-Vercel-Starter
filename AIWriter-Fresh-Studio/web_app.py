@@ -308,8 +308,10 @@ def create_app(env=None) -> Flask:
                 "AI_API_URL", "AI_API_KEY", "AI_MODEL"
             ))
 
-            # Public landing pages and GET-only auth screens remain viewable during setup.
-            if public_preview:
+            # Keep public previews available if core infrastructure is absent.
+            # When a database is configured, continue to migrations even if optional
+            # mail/AI settings are missing so authenticated public pages remain safe.
+            if public_preview and app.extensions.get("db") is None:
                 return None
 
             required_missing = []
@@ -510,10 +512,20 @@ def create_app(env=None) -> Flask:
                 # Ignore stale subscription notifications when Paddle delivers events out of order.
                 if existing and existing.get("last_event_at") and occurred_at:
                     old_time = existing["last_event_at"]
-                    old_text = old_time.isoformat() if hasattr(old_time, "isoformat") else str(old_time)
-                    if str(occurred_at) < old_text:
-                        repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
-                        return jsonify({"received": True, "stale": True}), 200
+                    try:
+                        old_dt = old_time if isinstance(old_time, datetime) else datetime.fromisoformat(
+                            str(old_time).replace("Z", "+00:00"))
+                        new_dt = datetime.fromisoformat(str(occurred_at).replace("Z", "+00:00"))
+                        if old_dt.tzinfo is None:
+                            old_dt = old_dt.replace(tzinfo=timezone.utc)
+                        if new_dt.tzinfo is None:
+                            new_dt = new_dt.replace(tzinfo=timezone.utc)
+                    except (TypeError, ValueError):
+                        log.warning("paddle webhook event has an invalid occurrence timestamp")
+                    else:
+                        if new_dt.astimezone(timezone.utc) < old_dt.astimezone(timezone.utc):
+                            repo.record_paddle_event(conn, event_id, event_type, occurred_at, utcnow())
+                            return jsonify({"received": True, "stale": True}), 200
 
                 repo.upsert_paddle_subscription(
                     conn, subscription_id, user_id, customer_id, price_id, plan,
