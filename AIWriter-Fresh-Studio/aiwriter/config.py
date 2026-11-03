@@ -36,6 +36,7 @@ class Settings:
     mail_use_tls: bool
     mail_username: str
     mail_password: str
+    resend_api_key: str
     mail_default_sender: str
     ai_api_url: str
     ai_api_key: str
@@ -63,7 +64,13 @@ class Settings:
     @property
     def secret_values(self) -> list:
         """Values that must never appear in logs."""
-        values = [self.secret_key, self.mail_password, self.ai_api_key, self.paddle_webhook_secret]
+        values = [
+            self.secret_key,
+            self.mail_password,
+            self.resend_api_key,
+            self.ai_api_key,
+            self.paddle_webhook_secret,
+        ]
         parsed = urlparse(self.database_url)
         if parsed.password:
             values.append(parsed.password)
@@ -140,6 +147,7 @@ def load_settings(env: Mapping | None = None) -> Settings:
         mail_use_tls=mail_use_tls,
         mail_username=_text(env, "MAIL_USERNAME"),
         mail_password=_text(env, "MAIL_PASSWORD"),
+        resend_api_key=_text(env, "RESEND_API_KEY"),
         mail_default_sender=_text(env, "MAIL_DEFAULT_SENDER"),
         ai_api_url=_text(env, "AI_API_URL"),
         ai_api_key=_text(env, "AI_API_KEY"),
@@ -165,12 +173,14 @@ def load_settings(env: Mapping | None = None) -> Settings:
         if not cookie_secure:
             problems.append("COOKIE_SECURE must be true in production.")
         if debug:
-            problems.append("FLASK_DEBUG must be false in production.")
-        if not settings_kwargs["mail_server"]:
-            problems.append("MAIL_SERVER is missing.")
+            problems.append("FLASK_DEBUG must be false in production")
         if not settings_kwargs["mail_default_sender"]:
             problems.append("MAIL_DEFAULT_SENDER is missing.")
-        if bool(settings_kwargs["mail_username"]) != bool(settings_kwargs["mail_password"]):
+        if not settings_kwargs["resend_api_key"] and not settings_kwargs["mail_server"]:
+            problems.append("MAIL_SERVER is missing (or set RESEND_API_KEY to use the Resend HTTP API).")
+        if not settings_kwargs["resend_api_key"] and (
+            bool(settings_kwargs["mail_username"]) != bool(settings_kwargs["mail_password"])
+        ):
             problems.append("MAIL_USERNAME and MAIL_PASSWORD must be set together.")
         ai_url = settings_kwargs["ai_api_url"]
         if not ai_url:
