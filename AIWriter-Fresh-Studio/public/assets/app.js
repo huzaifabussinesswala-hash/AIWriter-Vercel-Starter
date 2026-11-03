@@ -399,71 +399,217 @@
 
   if (paddleConfig && paddleButtons.length) {
     var paddleStatus = document.getElementById('paddle-status');
-    var paddleToken = paddleConfig.getAttribute('data-token');
-    var paddleEnvironment = paddleConfig.getAttribute('data-environment');
-    var checkoutReference = paddleConfig.getAttribute('data-checkout-ref');
-    var customerEmail = paddleConfig.getAttribute('data-customer-email');
+    var paddleToken = paddleConfig.getAttribute('data-token') || '';
+    var paddleEnvironment = paddleConfig.getAttribute('data-environment') || '';
+    var checkoutReference = paddleConfig.getAttribute('data-checkout-ref') || '';
+    var customerEmail = paddleConfig.getAttribute('data-customer-email') || '';
+    var paddleSdkPromise = null;
+    var paddleInitialized = false;
+    var activeCheckoutButton = null;
+    var checkoutOpened = false;
 
     function paddleMessage(message) {
       if (paddleStatus) paddleStatus.textContent = message;
     }
 
-    if (!window.Paddle || !paddleToken || !checkoutReference) {
-      paddleMessage('Paddle checkout could not load. Please refresh the page and try again.');
-      paddleButtons.forEach(function (button) { button.disabled = true; });
-    } else {
-      try {
-        if (paddleEnvironment === 'sandbox') {
-          window.Paddle.Environment.set('sandbox');
+    function setCheckoutBusy(button, busy) {
+      if (!button) return;
+      button.disabled = busy;
+      if (busy) {
+        button.setAttribute('aria-busy', 'true');
+      } else {
+        button.removeAttribute('aria-busy');
+      }
+    }
+
+    function releaseCheckoutButton() {
+      setCheckoutBusy(activeCheckoutButton, false);
+      activeCheckoutButton = null;
+    }
+
+    function eventReason(event) {
+      var data = event && event.data ? event.data : {};
+      var detail = data.detail || data.message || data.code || '';
+      return typeof detail === 'string' ? detail.slice(0, 220) : '';
+    }
+
+    function loadPaddleSdk() {
+      if (window.Paddle) return Promise.resolve(window.Paddle);
+      if (paddleSdkPromise) return paddleSdkPromise;
+
+      paddleSdkPromise = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        var settled = false;
+        var timeoutId = window.setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          reject(new Error('paddle_sdk_timeout'));
+        }, 15000);
+
+        function finish(error) {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          if (error || !window.Paddle) {
+            reject(error || new Error('paddle_sdk_unavailable'));
+          } else {
+            resolve(window.Paddle);
+          }
         }
 
-        window.Paddle.Initialize({
+        script.id = 'paddle-sdk-dynamic';
+        script.async = true;
+        script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+        script.onload = function () { finish(); };
+        script.onerror = function () { finish(new Error('paddle_sdk_blocked')); };
+        document.head.appendChild(script);
+      }).catch(function (error) {
+        paddleSdkPromise = null;
+        var failedScript = document.getElementById('paddle-sdk-dynamic');
+        if (failedScript && failedScript.parentNode) {
+          failedScript.parentNode.removeChild(failedScript);
+        }
+        throw error;
+      });
+
+      return paddleSdkPromise;
+    }
+
+    function initializePaddle() {
+      if (paddleInitialized) return Promise.resolve(window.Paddle);
+      if (!paddleToken || !checkoutReference) {
+        return Promise.reject(new Error('billing_config_incomplete'));
+      }
+
+      if (paddleEnvironment === 'production' && paddleToken.indexOf('live_') !== 0) {
+        return Promise.reject(new Error('live_client_token_required'));
+      }
+      if (paddleEnvironment === 'sandbox' && paddleToken.indexOf('test_') !== 0) {
+        return Promise.reject(new Error('sandbox_client_token_required'));
+      }
+
+      return loadPaddleSdk().then(function (paddle) {
+        if (paddleInitialized) return paddle;
+
+        if (paddleEnvironment === 'sandbox') {
+          paddle.Environment.set('sandbox');
+        }
+
+        paddle.Initialize({
           token: paddleToken,
           eventCallback: function (event) {
             if (!event || !event.name) return;
-            if (event.name === 'checkout.loaded') {
-              paddleMessage('Secure checkout is ready.');
+
+            if (event.name === 'checkout.opened' || event.name === 'checkout.loaded') {
+              checkoutOpened = true;
+              paddleMessage('Secure checkout is opening.');
             } else if (event.name === 'checkout.completed') {
               paddleMessage('Payment submitted. Your plan will update after Paddle confirms the subscription.');
-              paddleButtons.forEach(function (button) { button.disabled = false; });
+              releaseCheckoutButton();
             } else if (event.name === 'checkout.closed') {
               paddleMessage('Checkout closed. You can reopen it whenever you are ready.');
-              paddleButtons.forEach(function (button) { button.disabled = false; });
+              checkoutOpened = false;
+              releaseCheckoutButton();
+            } else if (event.name === 'checkout.warning') {
+              var warning = eventReason(event);
+              console.warn('[AIWriter Paddle] checkout.warning', event.data || {});
+              paddleMessage(warning
+                ? 'Paddle checkout warning: ' + warning
+                : 'Paddle reported a checkout warning. Check your Live checkout settings.');
             } else if (event.name === 'checkout.error') {
-              paddleMessage('Paddle could not open checkout. Please try again.');
-              paddleButtons.forEach(function (button) { button.disabled = false; });
+              var reason = eventReason(event);
+              console.error('[AIWriter Paddle] checkout.error', event.data || {});
+              paddleMessage(reason
+                ? 'Paddle could not open checkout: ' + reason
+                : 'Paddle rejected this checkout. Check domain approval, default payment link, token, and price ID.');
+              checkoutOpened = false;
+              releaseCheckoutButton();
             }
           }
         });
 
-        paddleButtons.forEach(function (button) {
-          button.addEventListener('click', function () {
-            var priceId = button.getAttribute('data-price-id');
-            var planName = button.getAttribute('data-plan-name') || 'plan';
-            if (!priceId) {
-              paddleMessage('This plan is missing its Paddle Price ID.');
-              return;
-            }
-            try {
-              button.disabled = true;
-              paddleMessage('Opening secure Paddle checkout...');
-              window.Paddle.Checkout.open({
-                items: [{ priceId: priceId, quantity: 1 }],
-                customData: { aiwriter_checkout_ref: checkoutReference },
-                customer: customerEmail ? { email: customerEmail } : undefined,
-                settings: { displayMode: 'overlay', theme: 'light' }
-              });
-            } catch (error) {
-              button.disabled = false;
-              paddleMessage('Could not open checkout. Please try again.');
-            }
-          });
-        });
-      } catch (error) {
-        paddleMessage('Paddle could not initialize. Check that the configured token matches this checkout environment, then refresh.');
-        paddleButtons.forEach(function (button) { button.disabled = true; });
-      }
+        paddleInitialized = true;
+        return paddle;
+      });
     }
+
+    function openPaddleCheckout(button) {
+      var priceId = button.getAttribute('data-price-id') || '';
+      var planName = button.getAttribute('data-plan-name') || 'plan';
+
+      if (priceId.indexOf('pri_') !== 0) {
+        paddleMessage('The ' + planName + ' plan does not have a valid Paddle Price ID.');
+        return;
+      }
+
+      if (button.disabled) return;
+      activeCheckoutButton = button;
+      checkoutOpened = false;
+      setCheckoutBusy(button, true);
+      paddleMessage('Connecting to secure checkout...');
+
+      initializePaddle().then(function (paddle) {
+        paddleMessage('Opening secure checkout...');
+        try {
+          paddle.Checkout.open({
+            items: [{ priceId: priceId, quantity: 1 }],
+            customData: { aiwriter_checkout_ref: checkoutReference },
+            customer: customerEmail ? { email: customerEmail } : undefined,
+            settings: { displayMode: 'overlay', theme: 'light' }
+          });
+
+          window.setTimeout(function () {
+            if (activeCheckoutButton === button && !checkoutOpened) {
+              paddleMessage('Checkout has not confirmed opening. Please retry; check the browser console for Paddle details.');
+              releaseCheckoutButton();
+            }
+          }, 20000);
+        } catch (error) {
+          console.error('[AIWriter Paddle] Checkout.open failed', error);
+          paddleMessage('Checkout could not start. Please retry. ' + (error && error.message ? error.message : ''));
+          releaseCheckoutButton();
+        }
+      }).catch(function (error) {
+        console.error('[AIWriter Paddle] Initialization failed', error);
+        var message = error && error.message ? error.message : 'unknown_error';
+        if (message === 'live_client_token_required') {
+          paddleMessage('Live checkout is misconfigured: PADDLE_CLIENT_TOKEN must start with live_.');
+        } else if (message === 'sandbox_client_token_required') {
+          paddleMessage('Sandbox checkout is misconfigured: PADDLE_CLIENT_TOKEN must start with test_.');
+        } else if (message === 'billing_config_incomplete') {
+          paddleMessage('Checkout configuration is incomplete. Check the Live token and signed-in session.');
+        } else if (message === 'paddle_sdk_blocked' || message === 'paddle_sdk_timeout') {
+          paddleMessage('Paddle secure checkout could not load. Check your connection or browser content blockers.');
+        } else {
+          paddleMessage('Paddle could not initialize: ' + message.slice(0, 180));
+        }
+        releaseCheckoutButton();
+      });
+    }
+
+    paddleButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        openPaddleCheckout(button);
+      });
+    });
+
+    // Warm up Paddle in the background while the customer reads the plans.
+    paddleMessage('Preparing secure checkout...');
+    initializePaddle().then(function () {
+      paddleMessage('Secure checkout is ready.');
+    }).catch(function (error) {
+      console.error('[AIWriter Paddle] Background initialization failed', error);
+      var message = error && error.message ? error.message : 'unknown_error';
+      if (message === 'live_client_token_required') {
+        paddleMessage('Live checkout is misconfigured: PADDLE_CLIENT_TOKEN must start with live_.');
+      } else if (message === 'sandbox_client_token_required') {
+        paddleMessage('Sandbox checkout is misconfigured: PADDLE_CLIENT_TOKEN must start with test_.');
+      } else if (message === 'paddle_sdk_blocked' || message === 'paddle_sdk_timeout') {
+        paddleMessage('Paddle could not load. Your plan buttons will retry when clicked.');
+      } else {
+        paddleMessage('Paddle setup needs attention: ' + message.slice(0, 180));
+      }
+    });
   }
 
 })();
