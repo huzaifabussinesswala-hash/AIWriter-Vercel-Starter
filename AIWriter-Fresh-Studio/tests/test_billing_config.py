@@ -45,3 +45,29 @@ def test_same_price_id_cannot_be_used_for_both_paid_tiers():
         "PADDLE_WEBHOOK_SECRET": "secret",
     })
     assert not settings.billing_ready
+
+
+def test_live_billing_portal_requires_live_api_key():
+    settings = load_settings({
+        "APP_ENV": "testing",
+        "PADDLE_ENVIRONMENT": "production",
+        "PADDLE_CLIENT_TOKEN": "live_example",
+        "PADDLE_PRICE_PRO": "pri_pro_example",
+        "PADDLE_PRICE_BUSINESS": "pri_business_example",
+        "PADDLE_WEBHOOK_SECRET": "secret",
+        "PADDLE_API_KEY": "pdl_live_apikey_example",
+    })
+    assert settings.billing_portal_ready
+
+
+def test_sandbox_billing_portal_rejects_live_api_key():
+    settings = load_settings({
+        "APP_ENV": "testing",
+        "PADDLE_ENVIRONMENT": "sandbox",
+        "PADDLE_CLIENT_TOKEN": "test_example",
+        "PADDLE_PRICE_PRO": "pri_pro_example",
+        "PADDLE_PRICE_BUSINESS": "pri_business_example",
+        "PADDLE_WEBHOOK_SECRET": "secret",
+        "PADDLE_API_KEY": "pdl_live_apikey_example",
+    })
+    assert not settings.billing_portal_ready
