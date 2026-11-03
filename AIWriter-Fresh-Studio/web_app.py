@@ -351,10 +351,11 @@ def create_app(env=None) -> Flask:
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self' https://cdn.paddle.com; "
-            "connect-src 'self' https://sandbox-api.paddle.com https://api.paddle.com; "
-            "frame-src 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com; "
-            "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; "
-            "base-uri 'self'; form-action 'self' https://sandbox-checkout.paddle.com https://checkout.paddle.com; "
+            "connect-src 'self' https://api.paddle.com https://sandbox-api.paddle.com https://*.paddle.com; "
+            "frame-src 'self' https://checkout.paddle.com https://sandbox-checkout.paddle.com https://*.paddle.com; "
+            "style-src 'self' 'unsafe-inline' https://*.paddle.com; "
+            "font-src 'self' data: https://*.paddle.com; img-src 'self' data: https:; "
+            "base-uri 'self'; form-action 'self' https://checkout.paddle.com https://sandbox-checkout.paddle.com https://*.paddle.com; "
             "frame-ancestors 'none'")
         if settings.cookie_secure:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
