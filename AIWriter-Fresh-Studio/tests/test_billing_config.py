@@ -30,3 +30,18 @@ def test_live_token_cannot_enable_sandbox_checkout():
 
 def test_checkout_requires_webhook_signing_secret():
     assert not billing_settings(webhook_secret="").billing_ready
+
+def test_invalid_paddle_environment_disables_checkout():
+    assert not billing_settings("unknown", "live_example").billing_ready
+
+
+def test_same_price_id_cannot_be_used_for_both_paid_tiers():
+    settings = load_settings({
+        "APP_ENV": "testing",
+        "PADDLE_ENVIRONMENT": "sandbox",
+        "PADDLE_CLIENT_TOKEN": "test_example",
+        "PADDLE_PRICE_PRO": "pri_same",
+        "PADDLE_PRICE_BUSINESS": "pri_same",
+        "PADDLE_WEBHOOK_SECRET": "secret",
+    })
+    assert not settings.billing_ready
