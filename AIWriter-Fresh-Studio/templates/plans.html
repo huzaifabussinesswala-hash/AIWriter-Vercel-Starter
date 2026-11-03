@@ -51,6 +51,8 @@
         {% endif %}
       {% elif current_plan == key %}
         <span class="plan-unavailable">You are currently on this plan.</span>
+      {% elif logged_in and current_plan in ('pro', 'business') %}
+        <span class="plan-unavailable">You already have an active paid plan. Plan changes will be available in your subscription settings.</span>
       {% elif logged_in and billing_ready %}
         <button class="btn btn-primary btn-block paddle-checkout-button"
                 type="button" data-price-id="{{ price_ids[key] }}"
