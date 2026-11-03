@@ -450,7 +450,7 @@
           });
         });
       } catch (error) {
-        paddleMessage('Paddle could not initialize. Check the Sandbox token and refresh this page.');
+        paddleMessage('Paddle could not initialize. Check that the configured token matches this checkout environment, then refresh.');
         paddleButtons.forEach(function (button) { button.disabled = true; });
       }
     }
