@@ -47,6 +47,7 @@ class Settings:
     paddle_price_pro: str
     paddle_price_business: str
     paddle_webhook_secret: str
+    paddle_api_key: str
     problems: tuple = ()
 
     @property
@@ -78,6 +79,12 @@ class Settings:
         return self.paddle_client_token.startswith(expected_token_prefix)
 
     @property
+    def billing_portal_ready(self) -> bool:
+        """Whether the server-side API key matches the selected Paddle environment."""
+        expected_prefix = "pdl_live_" if self.paddle_environment == "production" else "pdl_sdbx_"
+        return self.paddle_environment in {"sandbox", "production"} and self.paddle_api_key.startswith(expected_prefix)
+
+    @property
     def secret_values(self) -> list:
         """Values that must never appear in logs."""
         values = [
@@ -86,6 +93,7 @@ class Settings:
             self.resend_api_key,
             self.ai_api_key,
             self.paddle_webhook_secret,
+            self.paddle_api_key,
         ]
         parsed = urlparse(self.database_url)
         if parsed.password:
@@ -174,6 +182,7 @@ def load_settings(env: Mapping | None = None) -> Settings:
         paddle_price_pro=_text(env, "PADDLE_PRICE_PRO"),
         paddle_price_business=_text(env, "PADDLE_PRICE_BUSINESS"),
         paddle_webhook_secret=_text(env, "PADDLE_WEBHOOK_SECRET"),
+        paddle_api_key=_text(env, "PADDLE_API_KEY"),
     )
 
     if settings_kwargs["paddle_environment"] not in {"sandbox", "production"}:
