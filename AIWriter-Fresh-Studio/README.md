@@ -92,3 +92,10 @@ Do not set `PADDLE_ENVIRONMENT=production` while Sandbox credentials are still c
 ## Paddle product/pricing
 
 The plans page currently displays Pro at $11.99/month and Business at $29.99/month. Keep those amounts synchronized with the corresponding Paddle catalog prices. The app's webhook only grants a paid plan when the verified event's Price ID matches one of the configured plan Price IDs.
+
+
+### Customer billing portal
+
+To let signed-in customers manage subscriptions, update payment methods, and view invoices from Account settings, create a Paddle server-side API key in the same environment as checkout. Grant only `customer_portal_session.write`, then add it to Vercel as the encrypted production variable `PADDLE_API_KEY`. Live API keys use the `pdl_live_` prefix; Sandbox keys use `pdl_sdbx_`. The application creates a short-lived customer portal session on demand and never stores the generated portal URL. This key is separate from `PADDLE_CLIENT_TOKEN` and must never be exposed in browser code.
+
+The webhook destination should subscribe to `transaction.completed`, `subscription.created`, `subscription.updated`, `subscription.canceled`, `subscription.activated`, `subscription.trialing`, `subscription.past_due`, `subscription.paused`, and `subscription.resumed`. The handler verifies Paddle signatures, deduplicates event IDs, ignores stale subscription events, and updates the plan from the subscription lifecycle.
