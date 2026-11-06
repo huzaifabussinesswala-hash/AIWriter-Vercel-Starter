@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f8fc"><title>English Buddy AI — Your friendly English teacher</title>
+<style>
+:root{--ink:#172033;--muted:#68738a;--line:#e6eaf2;--blue:#4169e1;--pale:#edf2ff;--green:#13845b;--bg:#f7f8fc}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:15px 5%;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:2}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}.logo{width:38px;height:38px;border-radius:13px;background:linear-gradient(135deg,#4169e1,#7d8ff2);color:white;display:grid;place-items:center;font-size:20px}
+.pill{font-size:12px;background:#eaf8f1;color:#16734f;border-radius:30px;padding:6px 10px;font-weight:700}
+main{max-width:1100px;margin:28px auto;padding:0 18px;display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px}
+.panel,.chat{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 30px #1c2c5010}
+.side{padding:20px;height:max-content}.side h3{margin:0 0 6px}.sub{color:var(--muted);font-size:13px}
+.topic{width:100%;border:1px solid var(--line);background:#fff;text-align:left;padding:12px;border-radius:12px;margin-top:9px;cursor:pointer;color:var(--ink);font-weight:650}.topic.active,.topic:hover{border-color:#9aafff;background:var(--pale);color:#2d50c2}
+.tip{background:#fff8e9;border:1px solid #f5e6c4;padding:13px;border-radius:13px;margin-top:18px;font-size:13px}
+.chat{min-height:690px;display:flex;flex-direction:column;overflow:hidden}.chathead{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.chathead h2{font-size:18px;margin:0}.messages{padding:22px;flex:1;display:flex;flex-direction:column;gap:14px;max-height:520px;overflow:auto}
+.msg{max-width:86%;padding:12px 15px;border-radius:16px;white-space:pre-wrap}.bot{background:#f0f3fa;align-self:flex-start;border-bottom-left-radius:5px}.user{background:#4169e1;color:white;align-self:flex-end;border-bottom-right-radius:5px}
+.composer{border-top:1px solid var(--line);padding:16px;display:flex;gap:10px}.composer input{min-width:0;flex:1;border:1px solid #dce2ed;border-radius:13px;padding:13px;font:inherit;outline:none}.composer input:focus{border-color:var(--blue)}button{font:inherit}.send{border:0;border-radius:13px;background:var(--blue);color:white;padding:0 20px;font-weight:750;cursor:pointer}.send:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 16px}.small{border:1px solid var(--line);background:white;padding:8px 11px;border-radius:10px;cursor:pointer;color:#34405a;font-size:13px}.status{font-size:12px;color:var(--muted);padding:0 20px 12px}.welcome strong{color:#2d50c2}
+@media(max-width:760px){main{grid-template-columns:1fr;margin:16px auto}.side{padding:15px}.topics{display:grid;grid-template-columns:1fr 1fr;gap:5px}.topic{margin:4px 0}.chat{min-height:640px}.messages{max-height:460px}.chathead{padding:16px}.msg{max-width:94%}}
+</style></head>
+<body>
+<header><div class="brand"><div class="logo">✦</div>English Buddy AI</div><span class="pill">● Your practice room</span></header>
+<main>
+<aside class="panel side"><h3>Choose a lesson</h3><div class="sub">Pick a topic and practice with your AI teacher.</div>
+<div class="topics" id="topics">
+<button class="topic active" data-topic="Can">Can — ability & permission</button>
+<button class="topic" data-topic="Could">Could — polite requests</button>
+<button class="topic" data-topic="May">May — permission</button>
+<button class="topic" data-topic="Might">Might — possibility</button>
+<button class="topic" data-topic="Must">Must — necessity</button>
+<button class="topic" data-topic="Daily English">Daily conversation</button>
+</div>
+<div class="tip"><b>💡 Learning tip</b><br>Try to answer in English. If you get stuck, ask: “Please explain in Roman Urdu.”</div>
+<div style="margin-top:18px"><div class="sub">Practice progress</div><b id="count">0 answers checked</b></div>
+</aside>
+<section class="chat">
+<div class="chathead"><div><h2 id="lessonTitle">Can — ability & permission</h2><div class="sub">Friendly teacher • Beginner level</div></div><button class="small" id="reset">New practice</button></div>
+<div class="messages" id="messages" aria-live="polite">
+<div class="msg bot welcome">Assalam-o-alaikum! 👋 I’m your English teacher. Today we’ll practice <strong>CAN</strong>.<br><br>“Can” means <strong>sakta/sakti/sakte hain</strong>.<br><br>First question: <strong>Can you speak English?</strong><br>Try answering in English. 😊</div>
+</div>
+<div class="actions"><button class="small" data-prompt="Give me one easy sentence to translate into English.">✍️ Translation practice</button><button class="small" data-prompt="Give me a multiple-choice quiz with 3 questions.">🧠 Quick quiz</button><button class="small" data-prompt="Explain the lesson in simple Roman Urdu with examples.">🇵🇰 Explain in Roman Urdu</button></div>
+<form class="composer" id="form"><input id="answer" autocomplete="off" placeholder="Type your answer in English…" required><button class="send" id="send">Send ↑</button></form>
+<div class="status" id="status">Your answers are checked by AI when an API key is configured.</div>
+</section></main>
+<script>
+const messages=document.getElementById('messages'), input=document.getElementById('answer'), send=document.getElementById('send'), statusEl=document.getElementById('status');
+let topic='Can', checked=0, history=[];
+function add(text,who){const el=document.createElement('div');el.className='msg '+who;el.textContent=text;messages.appendChild(el);messages.scrollTop=messages.scrollHeight}
+function setTopic(next){topic=next;document.getElementById('lessonTitle').textContent=next==='Can'?'Can — ability & permission':next+' — practice';document.querySelectorAll('.topic').forEach(b=>b.classList.toggle('active',b.dataset.topic===next));messages.innerHTML='';history=[];add('Great! Let’s practice '+next+'. I will ask you questions, check your answers, and explain mistakes in simple English or Roman Urdu.\n\n'+(next==='Can'?'First question: Can you help me learn English?':'First question: Make one sentence using '+next+'.'),'bot');}
+document.querySelectorAll('.topic').forEach(b=>b.addEventListener('click',()=>setTopic(b.dataset.topic)));
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
+document.getElementById('reset').addEventListener('click',()=>setTopic(topic));
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value.trim())});
+async function sendMessage(text){if(!text||send.disabled)return;add(text,'user');input.value='';send.disabled=true;send.textContent='…';statusEl.textContent='Your teacher is thinking…';try{const res=await fetch('/api/tutor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,message:text,history:history.slice(-10)})});const data=await res.json();if(!res.ok)throw new Error(data.error||'Could not get a reply.');add(data.reply,'bot');history.push({role:'user',content:text},{role:'assistant',content:data.reply});checked++;document.getElementById('count').textContent=checked+' answers checked';statusEl.textContent='Keep going — every mistake helps you learn!';}catch(err){add(err.message,'bot');statusEl.textContent='Check your connection or API setup.';}finally{send.disabled=false;send.textContent='Send ↑';input.focus()}}
+</script></body></html>
