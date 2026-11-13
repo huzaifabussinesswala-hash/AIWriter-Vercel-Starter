@@ -6,7 +6,9 @@ A responsive editorial website and first-party email-OTP workspace for beauty ec
 - Original responsive marketing site with SEO/social metadata and accessible account forms.
 - Passwordless email OTP: hashed codes, 10-minute expiry, one-time use, resend cooldown and database-backed attempt limits.
 - Secure HttpOnly session cookies; only token hashes are stored.
-- Private customer project storage with per-user access checks.
+- Private customer project storage with per-user access checks and delete controls.
+- Account deletion that cascades to saved projects and sessions.
+- Daily cleanup endpoint for expired OTPs, sessions and rate-limit rows.
 - Neon Postgres schema and Vercel serverless API routes.
 - No fabricated testimonials, customer counts or performance claims.
 
