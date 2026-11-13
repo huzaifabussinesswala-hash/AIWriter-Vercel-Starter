@@ -16,7 +16,7 @@ A responsive editorial website and first-party email-OTP workspace for beauty ec
 1. Create a Neon Postgres database.
 2. Run `database/schema.sql` once in the Neon SQL Editor.
 3. Verify a sending domain with Resend. Set `EMAIL_FROM` to an address on that verified domain.
-4. Add `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, and a random `OTP_SECRET` (32+ characters) in Vercel for Preview and Production.
+4. Add `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, a random `OTP_SECRET` (32+ characters), and a separate `CRON_SECRET` in Vercel for Preview and Production.
 5. Deploy and test: request code, receive email, verify code, reload session, create a project, sign out, and confirm another account cannot read it.
 6. Replace draft legal pages with reviewed policies, business details and a monitored privacy contact.
 7. Complete security, privacy, retention and deletion testing before public customer onboarding.
