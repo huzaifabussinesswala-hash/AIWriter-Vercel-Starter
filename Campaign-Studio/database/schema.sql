@@ -38,3 +38,23 @@ CREATE TABLE IF NOT EXISTS campaign_projects (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS campaign_projects_user_created_idx ON campaign_projects(user_id,created_at DESC);
+
+
+-- Customer-owned API credentials. Only the SHA-256 hash is stored.
+CREATE TABLE IF NOT EXISTS customer_api_keys (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES campaign_users(id) ON DELETE CASCADE,
+  name VARCHAR(80) NOT NULL,
+  key_prefix VARCHAR(24) NOT NULL,
+  key_hash CHAR(64) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS customer_api_keys_user_idx ON customer_api_keys(user_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS api_usage_daily (
+  user_id BIGINT NOT NULL REFERENCES campaign_users(id) ON DELETE CASCADE,
+  usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  request_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(user_id,usage_date)
+);
