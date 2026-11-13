@@ -2,6 +2,7 @@
   "name": "campaign-studio",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Campaign Studio customer-feedback workspace",
   "engines": { "node": ">=20" },
   "dependencies": {
